@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>MathQuiz | Result & Scorecard Lookup</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <!-- MathJax 3 for reviewing math questions -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      options: { enableMenu: false }
+    };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 flex flex-col justify-between">
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-20 shadow-sm">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
+          Σ
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-slate-900 tracking-tight">MathQuiz</h1>
+          <p class="text-xs text-slate-500 font-medium">Result &amp; Scorecard Verification</p>
+        </div>
+      </div>
+      <div>
+        <a href="/mathquiz/student" class="text-xs sm:text-sm font-semibold text-slate-600 hover:text-indigo-600 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition">
+          &larr; Back to Examination Portal
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-grow max-w-4xl w-full mx-auto p-4 sm:p-6 my-4">
+    <!-- Lookup Card -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-lg p-6 mb-8">
+      <h2 class="text-xl font-bold text-slate-900 mb-1">Check Examination Results</h2>
+      <p class="text-xs text-slate-500 mb-4">Enter your registered institutional credentials to check result release status.</p>
+
+      <form id="lookupForm" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">SAP ID / Roll No</label>
+          <input type="text" id="resSapId" required placeholder="e.g. 70572600101"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm mono uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Registered Email</label>
+          <input type="email" id="resEmail" required placeholder="e.g. aarav.sharma@univ.edu"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="flex items-end">
+          <button type="submit" id="btnLookup"
+            class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-sm rounded-xl shadow transition">
+            Check Result
+          </button>
+        </div>
+      </form>
+
+      <div id="lookupAlert" class="hidden mt-4 p-4 rounded-xl text-sm font-medium"></div>
+    </div>
+
+    <!-- Results Display Container -->
+    <div id="scorecardContainer" class="hidden space-y-6">
+      <!-- Populated dynamically -->
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-4 px-6 text-center text-xs text-slate-500">
+    <p>MathQuiz &copy; 2026. Academic Assessment Management System. Admin-controlled result release.</p>
+  </footer>
+
+  <script>
+    // Autofill from session if available
+    const sessSap = sessionStorage.getItem('mq_sap_id');
+    const sessEmail = sessionStorage.getItem('mq_email');
+    if (sessSap) document.getElementById('resSapId').value = sessSap;
+    if (sessEmail) document.getElementById('resEmail').value = sessEmail;
+
+    const form = document.getElementById('lookupForm');
+    const alertBox = document.getElementById('lookupAlert');
+    const cardBox = document.getElementById('scorecardContainer');
+
+    function showAlert(msg, isError = true) {
+      alertBox.textContent = msg;
+      alertBox.className = isError ? 
+        'mt-4 p-4 rounded-xl text-sm font-medium bg-rose-50 border border-rose-200 text-rose-800' :
+        'mt-4 p-4 rounded-xl text-sm font-medium bg-amber-50 border border-amber-200 text-amber-900';
+      alertBox.classList.remove('hidden');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertBox.classList.add('hidden');
+      cardBox.classList.add('hidden');
+      cardBox.innerHTML = '';
+
+      const sap_id = document.getElementById('resSapId').value.trim().toUpperCase();
+      const email = document.getElementById('resEmail').value.trim().toLowerCase();
+
+      if (!sap_id || !email) return showAlert('Please enter both SAP ID and email.');
+
+      try {
+        const res = await fetch('/api/mq/check-result', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sap_id, email })
+        });
+        const json = await res.json();
+
+        if (!res.ok || !json.success) {
+          return showAlert(json.error || 'No records found for the given details.');
+        }
+
+        const data = json.results;
+        if (!data || data.length === 0) {
+          return showAlert('No examination submissions found for this student account.');
+        }
+
+        cardBox.classList.remove('hidden');
+
+        // Check if any results are published
+        data.forEach(item => {
+          if (!item.is_published) {
+            // Unreleased / Hidden State
+            const unpubDiv = document.createElement('div');
+            unpubDiv.className = 'bg-amber-50 border border-amber-200 rounded-2xl p-6 text-amber-950 space-y-2';
+            unpubDiv.innerHTML = `
+              <div class="flex items-center space-x-2 text-amber-800 font-bold">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <span class="text-base font-bold">${item.quiz_title || 'Examination'}</span>
+              </div>
+              <p class="text-sm"><strong>Attendance Status: Present</strong> · Your answers have been successfully submitted and verified on the server.</p>
+              <div class="bg-amber-100/70 border border-amber-300/50 rounded-xl p-3 text-xs text-amber-900 mt-2 font-medium">
+                🔒 <strong>Result Release Notice:</strong> Marks are currently hidden by the examination administrator. Once faculty reviews and finalizes the assessment, results will be released here.
+              </div>
+            `;
+            cardBox.appendChild(unpubDiv);
+          } else {
+            // Published State: Display official scorecard
+            const pubDiv = document.createElement('div');
+            pubDiv.className = 'bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-6';
+
+            let itemsHtml = '';
+            if (item.items && item.items.length > 0) {
+              itemsHtml = `
+                <div class="mt-6 border-t border-slate-100 pt-6">
+                  <h4 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Question-by-Question Performance</h4>
+                  <div class="space-y-4">
+                    ${item.items.map(it => `
+                      <div class="p-4 rounded-xl border ${it.is_correct ? 'border-emerald-200 bg-emerald-50/30' : 'border-rose-200 bg-rose-50/30'}">
+                        <div class="flex items-center justify-between text-xs font-bold mb-2">
+                          <span class="px-2 py-0.5 rounded ${it.is_correct ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                            Question ${it.position} · ${it.is_correct ? 'Correct (+'+it.awarded_marks+')' : 'Incorrect ('+it.awarded_marks+')'}
+                          </span>
+                          <span class="text-slate-500 font-semibold">${it.awarded_marks} / ${it.max_marks} Marks</span>
+                        </div>
+                        <div class="text-sm text-slate-900 font-medium my-2">${it.question_text}</div>
+                        <div class="text-xs text-slate-600 mt-2 space-y-1">
+                          <div><strong>Your Choice:</strong> Option ${it.student_choice || 'Unanswered'}</div>
+                          <div><strong>Correct Choice:</strong> Option ${it.correct_choice}</div>
+                          ${it.explanation ? `<div class="mt-2 text-slate-700 bg-white/70 p-2 rounded-lg border border-slate-200"><em>Solution:</em> ${it.explanation}</div>` : ''}
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              `;
+            }
+
+            pubDiv.innerHTML = `
+              <div class="flex items-start justify-between border-b border-slate-100 pb-4">
+                <div>
+                  <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 mb-2">
+                    Official Scorecard Released
+                  </span>
+                  <h3 class="text-xl font-bold text-slate-900">${item.quiz_title}</h3>
+                  <p class="text-xs text-slate-500 mt-0.5">Quiz Code: <span class="mono font-semibold">${item.quiz_code}</span></p>
+                </div>
+                <div class="text-right">
+                  <span class="text-3xl font-extrabold text-indigo-700">${item.final_score}</span>
+                  <span class="text-sm font-bold text-slate-400">/ ${item.maximum_marks}</span>
+                  <div class="text-xs font-bold text-slate-600 mt-0.5">${item.percentage}%</div>
+                </div>
+              </div>
+              ${itemsHtml}
+            `;
+            cardBox.appendChild(pubDiv);
+            if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([pubDiv]);
+          }
+        });
+
+      } catch (err) {
+        showAlert('Error contacting results service.');
+      }
+    });
+
+    if (sessSap && sessEmail) {
+      document.getElementById('btnLookup').click();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}MathQuiz – Mathematics Examination System{% endblock %}</title>
+  
+  <!-- Tailwind CSS & FontAwesome 6 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 antialiased flex flex-col">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-[#173B68] text-white shadow-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="/mathquiz/admin" class="flex items-center space-x-2.5 text-white hover:text-amber-300 transition">
+          <i class="fa-solid fa-square-root-variable text-xl text-amber-400"></i>
+          <div>
+            <span class="font-bold text-base tracking-tight block leading-tight">MathQuiz</span>
+            <span class="text-[10px] text-slate-300 uppercase tracking-widest block font-medium">Mathematics Assessment</span>
+          </div>
+        </a>
+      </div>
+
+      <!-- Quick Action Navigation -->
+      <nav class="hidden md:flex items-center space-x-2 text-xs font-semibold">
+        <a href="/mathquiz/admin" class="px-3 py-1.5 rounded-lg text-white/90 hover:bg-white/10 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-gauge"></i> Console
+        </a>
+        <a href="/mathquiz/student" target="_blank" class="px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-600 text-white transition flex items-center gap-1.5 shadow-sm">
+          <i class="fa-solid fa-pen-nib"></i> Student Exam Room ↗
+        </a>
+        <a href="/mathquiz/result" target="_blank" class="px-3 py-1.5 rounded-lg bg-blue-600/90 hover:bg-blue-600 text-white transition flex items-center gap-1.5 shadow-sm">
+          <i class="fa-solid fa-award"></i> Result Portal ↗
+        </a>
+      </nav>
+
+      <!-- User Profile / Session -->
+      <div class="flex items-center space-x-3">
+        {% if current_user.is_authenticated %}
+          <div class="text-right hidden sm:block">
+            <div class="text-xs font-bold leading-tight">{{ current_user.username }}</div>
+            <div class="text-[10px] text-amber-300 uppercase tracking-wider font-semibold">{{ current_user.role }}</div>
+          </div>
+          <a href="{{ url_for('auth.logout') }}" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-rose-600/80 text-white text-xs font-bold transition flex items-center gap-1">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span class="hidden sm:inline">Logout</span>
+          </a>
+        {% else %}
+          <a href="{{ url_for('auth.login') }}" class="px-3.5 py-1.5 rounded-lg bg-white text-[#173B68] text-xs font-bold hover:bg-slate-100 transition shadow-sm">
+            Sign In
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <!-- Main View Container -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="mb-6 space-y-2">
+          {% for category, message in messages %}
+            <div class="p-4 rounded-xl text-xs font-medium border flex items-center justify-between {% if category == 'danger' %}bg-rose-50 text-rose-800 border-rose-200{% elif category == 'success' %}bg-emerald-50 text-emerald-800 border-emerald-200{% elif category == 'warning' %}bg-amber-50 text-amber-800 border-amber-200{% else %}bg-blue-50 text-blue-800 border-blue-200{% endif %}">
+              <span>{{ message }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-4 mt-auto text-center text-xs text-slate-400">
+    <div class="max-w-7xl mx-auto px-4">
+      MathQuiz – Online Mathematics Examination & Assessment Management System &bull; Version 1.0
+    </div>
+  </footer>
+
+</body>
+</html>

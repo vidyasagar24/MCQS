@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>MathQuiz | Proctored Examination</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <!-- MathJax 3 Configuration -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        packages: {'[+]': ['ams']}
+      },
+      options: {
+        enableMenu: false
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; user-select: none; -webkit-user-select: none; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .blurred { filter: blur(14px); pointer-events: none; }
+    #watermark {
+      position: fixed;
+      inset: -40%;
+      z-index: 40;
+      pointer-events: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 70px 100px;
+      transform: rotate(-25deg);
+      opacity: 0.07;
+      font: 700 13px 'JetBrains Mono', monospace;
+      align-content: center;
+      justify-content: center;
+    }
+    @media print { body { display: none !important; } }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col justify-between overflow-x-hidden">
+
+  <!-- Translucent Dynamic Watermark -->
+  <div id="watermark"></div>
+
+  <!-- Security Strike Modal Overlay -->
+  <div id="strikeModal" class="fixed inset-0 bg-slate-950/90 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 text-center border-2 border-rose-600 shadow-2xl">
+      <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-2xl font-bold">
+        ⚠️
+      </div>
+      <h3 class="text-xl font-bold text-slate-900 mb-1">Security Policy Violation</h3>
+      <div class="inline-block px-3 py-1 bg-rose-100 text-rose-800 rounded-full font-bold text-xs uppercase tracking-wider mb-3" id="modalStrikeBadge">
+        Strike 1 of 3
+      </div>
+      <p id="modalStrikeReason" class="text-sm text-slate-700 bg-rose-50 border border-rose-200 rounded-xl p-3 mb-4 font-medium leading-relaxed"></p>
+      <p class="text-xs text-slate-500 mb-5 leading-normal">
+        Exiting fullscreen, tab switches, and window focus loss are strictly prohibited. Reaching the strike limit will <strong>automatically submit</strong> your examination immediately.
+      </p>
+      <button id="btnResumeExam" class="w-full py-3 px-4 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold rounded-xl shadow-lg transition">
+        Return to Fullscreen &amp; Resume Examination
+      </button>
+    </div>
+  </div>
+
+  <!-- Exam Header Bar -->
+  <header class="bg-white border-b border-slate-200 px-4 sm:px-6 py-3.5 sticky top-0 z-30 shadow-sm flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-lg">
+        Σ
+      </div>
+      <div>
+        <h2 id="headerQuizTitle" class="text-sm sm:text-base font-bold text-slate-900 leading-tight">Mathematics Examination</h2>
+        <p class="text-xs text-slate-500">
+          Candidate: <span id="headerStudentName" class="font-semibold text-slate-700"></span> · 
+          SAP ID: <span id="headerSapId" class="mono font-semibold text-indigo-700"></span>
+        </p>
+      </div>
+    </div>
+
+    <div class="flex items-center space-x-3 sm:space-x-4">
+      <div class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold">
+        <span>Strikes:</span>
+        <span id="badgeStrikes" class="mono font-bold text-amber-700">0/3</span>
+      </div>
+      <div class="flex items-center space-x-2 bg-slate-900 text-white px-3.5 py-1.5 rounded-xl font-bold mono text-sm shadow">
+        <svg class="w-4 h-4 text-rose-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span id="timerDisplay">--:--</span>
+      </div>
+      <button id="btnSubmitExam" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold rounded-lg shadow transition">
+        Submit Exam
+      </button>
+    </div>
+  </header>
+
+  <!-- Examination Workspace -->
+  <main id="examWorkspace" class="flex-grow max-w-6xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Left Column: Current Question & Options -->
+    <div class="lg:col-span-2 space-y-4">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 relative">
+        <!-- Question Header -->
+        <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
+          <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200" id="qPositionBadge">
+            Question 1 of 10
+          </span>
+          <div class="flex items-center space-x-2">
+            <span id="saveStatusIndicator" class="text-xs text-slate-400 font-medium flex items-center space-x-1">
+              <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+              <span>Loaded</span>
+            </span>
+            <button id="btnFlagReview" class="px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-semibold hover:bg-slate-50 transition text-slate-600">
+              Mark for Review
+            </button>
+          </div>
+        </div>
+
+        <!-- Question Text & LaTeX -->
+        <div id="questionContainer" class="text-base text-slate-900 font-medium leading-relaxed my-4 min-h-[70px]">
+          Loading question content...
+        </div>
+
+        <!-- MCQ Options List -->
+        <div id="optionsContainer" class="space-y-3 my-6">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Navigation Action Buttons -->
+        <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+          <div class="flex space-x-2">
+            <button id="btnPrev" class="px-4 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition">
+              &larr; Previous
+            </button>
+            <button id="btnClear" class="px-3.5 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition">
+              Clear Choice
+            </button>
+          </div>
+          <button id="btnNext" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md transition">
+            Save &amp; Next &rarr;
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Question Palette & Overview -->
+    <div class="space-y-4">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sticky top-20">
+        <h3 class="text-sm font-bold text-slate-900 mb-3">Question Palette</h3>
+        <div id="paletteGrid" class="grid grid-cols-5 gap-2 my-3">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Palette Legend -->
+        <div class="pt-4 mt-4 border-t border-slate-100 text-xs text-slate-600 space-y-1.5 font-medium">
+          <div class="flex items-center space-x-2">
+            <span class="w-3.5 h-3.5 rounded bg-emerald-600 flex-shrink-0"></span>
+            <span>Answered (<span id="countAnswered">0</span>)</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="w-3.5 h-3.5 rounded bg-amber-400 flex-shrink-0"></span>
+            <span>Marked for Review (<span id="countReview">0</span>)</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="w-3.5 h-3.5 rounded bg-slate-200 border border-slate-300 flex-shrink-0"></span>
+            <span>Unanswered (<span id="countUnanswered">0</span>)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // State management
+    const token = sessionStorage.getItem('mq_session_token');
+    const studentName = sessionStorage.getItem('mq_student_name') || 'Candidate';
+    const sapId = sessionStorage.getItem('mq_sap_id') || '000000';
+    const email = sessionStorage.getItem('mq_email') || 'student@univ.edu';
+    const quizTitle = sessionStorage.getItem('mq_quiz_title') || 'Mathematics Exam';
+    const maxStrikes = parseInt(sessionStorage.getItem('mq_max_strikes') || '3', 10);
+
+    if (!token) {
+      alert('Examination session not found. Please log in first.');
+      window.location.href = '/mathquiz/student';
+    }
+
+    let questions = [];
+    let currentIndex = 0;
+    let answers = {};
+    let flagged = {};
+    let currentStrikes = 0;
+    let remainingSeconds = 0;
+    let timerInterval = null;
+    let isSubmitting = false;
+
+    // Header info
+    document.getElementById('headerQuizTitle').textContent = quizTitle;
+    document.getElementById('headerStudentName').textContent = studentName;
+    document.getElementById('headerSapId').textContent = sapId;
+    document.getElementById('badgeStrikes').textContent = `0/${maxStrikes}`;
+
+    // Watermark generation
+    function updateWatermark() {
+      const wm = document.getElementById('watermark');
+      const text = `${studentName.toUpperCase()} • ${sapId} • ${email} • ${new Date().toLocaleTimeString()}`;
+      wm.innerHTML = Array(48).fill(`<span>${text}</span>`).join('');
+    }
+    updateWatermark();
+    setInterval(updateWatermark, 15000);
+
+    // LaTeX typesetter
+    function renderMath(element) {
+      if (window.MathJax && MathJax.typesetPromise) {
+        MathJax.typesetPromise([element]).catch(() => {});
+      } else {
+        setTimeout(() => renderMath(element), 300);
+      }
+    }
+
+    // Fullscreen controller
+    async function enterFullscreen() {
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch (err) {}
+    }
+
+    // Proctoring & Strike Monitor
+    let lastViolationTime = 0;
+    async function recordViolation(violationType) {
+      if (isSubmitting || Date.now() - lastViolationTime < 1500) return;
+      lastViolationTime = Date.now();
+
+      currentStrikes++;
+      document.getElementById('badgeStrikes').textContent = `${currentStrikes}/${maxStrikes}`;
+
+      try {
+        const res = await fetch('/api/mq/record-violation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_token: token,
+            violation_type: violationType,
+            metadata: { timestamp: new Date().toISOString() }
+          })
+        });
+        const json = await res.json();
+
+        if (json.data && json.data.auto_submitted) {
+          alert(`Maximum permitted security violations exceeded (${currentStrikes}/${maxStrikes}). Your examination has been automatically submitted.`);
+          window.location.href = '/mathquiz/result';
+          return;
+        }
+
+        // Show warning modal
+        document.getElementById('modalStrikeBadge').textContent = `Strike ${currentStrikes} of ${maxStrikes}`;
+        document.getElementById('modalStrikeReason').textContent = `Violation detected: ${violationType}`;
+        document.getElementById('strikeModal').classList.remove('hidden');
+        document.getElementById('examWorkspace').classList.add('blurred');
+
+      } catch (e) {}
+    }
+
+    document.getElementById('btnResumeExam').addEventListener('click', async () => {
+      await enterFullscreen();
+      document.getElementById('strikeModal').classList.add('hidden');
+      document.getElementById('examWorkspace').classList.remove('blurred');
+    });
+
+    // Proctoring event listeners
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) recordViolation('Browser tab switched or minimized');
+    });
+    window.addEventListener('blur', () => {
+      recordViolation('Window focus lost (switched outside examination)');
+    });
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) recordViolation('Exited mandatory fullscreen mode');
+    });
+
+    // Keyboard & Context Menu Restrictions
+    ['contextmenu', 'copy', 'cut', 'paste', 'dragstart'].forEach(evt => {
+      document.addEventListener(evt, e => e.preventDefault());
+    });
+    window.addEventListener('keydown', (e) => {
+      const k = e.key || '';
+      const c = e.ctrlKey || e.metaKey;
+      if (k === 'PrintScreen' || e.keyCode === 44) {
+        e.preventDefault();
+        recordViolation('Screenshot attempt (PrintScreen key)');
+      }
+      if (c && e.shiftKey && ['3', '4', '5', 's', 'S', 'i', 'I', 'c', 'C'].includes(k)) {
+        e.preventDefault();
+        recordViolation('Screen capture or DevTools shortcut');
+      }
+      if (k === 'F12' || (c && ['p', 'P', 'u', 'U', 's', 'S'].includes(k))) {
+        e.preventDefault();
+      }
+    }, true);
+
+    // Timer Countdown
+    function startTimer(seconds) {
+      remainingSeconds = seconds;
+      function tick() {
+        const m = Math.floor(remainingSeconds / 60);
+        const s = remainingSeconds % 60;
+        const disp = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        document.getElementById('timerDisplay').textContent = disp;
+
+        if (remainingSeconds <= 0) {
+          clearInterval(timerInterval);
+          submitExam(true, 'Examination time expired.');
+        } else {
+          remainingSeconds--;
+        }
+      }
+      tick();
+      timerInterval = setInterval(tick, 1000);
+    }
+
+    // Fetch Question Paper
+    async function loadPaper() {
+      try {
+        const res = await fetch('/api/mq/get-paper', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_token: token })
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          alert(json.error || 'Failed to load paper.');
+          window.location.href = '/mathquiz/student';
+          return;
+        }
+
+        const paper = json.paper;
+        questions = paper.questions;
+        questions.forEach(q => {
+          if (q.question_type === 'multiple') {
+            if (q.saved_options && q.saved_options.length) {
+              answers[q.question_id] = q.saved_options;
+            }
+          } else {
+            if (q.saved_answer) answers[q.question_id] = q.saved_answer;
+          }
+        });
+
+        startTimer(paper.remaining_seconds);
+        enterFullscreen();
+        renderQuestion(0);
+        renderPalette();
+
+      } catch (err) {
+        alert('Connection error loading paper.');
+      }
+    }
+
+    // Render Question & Options
+    function renderQuestion(idx) {
+      currentIndex = idx;
+      const q = questions[idx];
+      if (!q) return;
+
+      document.getElementById('qPositionBadge').textContent = `Question ${idx + 1} of ${questions.length} · [${q.marks} Mark]`;
+      document.getElementById('btnPrev').disabled = (idx === 0);
+      document.getElementById('btnNext').textContent = (idx === questions.length - 1) ? 'Review & Submit' : 'Save & Next →';
+
+      // Question body
+      const qBox = document.getElementById('questionContainer');
+      qBox.innerHTML = q.latex_source;
+      renderMath(qBox);
+
+      // Options
+      const isMultiple = (q.question_type === 'multiple');
+      const optBox = document.getElementById('optionsContainer');
+      optBox.innerHTML = '';
+
+      if (isMultiple) {
+        const hint = document.createElement('div');
+        hint.className = 'text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-lg mb-2';
+        hint.innerHTML = '<i class="fa-solid fa-list-check me-1"></i> Multiple-Answer Question: Select all correct options (Exact-match scoring).';
+        optBox.appendChild(hint);
+      }
+
+      q.options.forEach(opt => {
+        let isSelected = false;
+        if (isMultiple) {
+          isSelected = Array.isArray(answers[q.question_id]) && answers[q.question_id].includes(opt.key);
+        } else {
+          isSelected = (answers[q.question_id] === opt.key);
+        }
+
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left p-3.5 rounded-xl border-2 transition flex items-center space-x-3 text-sm font-medium ${
+          isSelected ? 'border-indigo-600 bg-indigo-50/50 text-indigo-950 font-semibold' : 'border-slate-200 bg-white hover:border-slate-300'
+        }`;
+        const markerType = isMultiple ? (isSelected ? '☑' : '☐') : opt.key;
+        btn.innerHTML = `
+          <span class="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0 ${
+            isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700'
+          }">${markerType}</span>
+          <span class="opt-text flex-grow">${opt.latex}</span>
+        `;
+        btn.addEventListener('click', () => selectOption(q.question_id, opt.key, isMultiple));
+        optBox.appendChild(btn);
+      });
+      renderMath(optBox);
+
+      // Flag button
+      const flagBtn = document.getElementById('btnFlagReview');
+      flagBtn.textContent = flagged[q.question_id] ? 'Flagged for Review ✓' : 'Mark for Review';
+      flagBtn.className = flagged[q.question_id] ? 
+        'px-2.5 py-1 rounded-lg border border-amber-300 bg-amber-50 text-xs font-semibold text-amber-800' : 
+        'px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-semibold hover:bg-slate-50 transition text-slate-600';
+    }
+
+    // Save student answer immediately
+    async function selectOption(qId, key, isMultiple = false) {
+      if (isMultiple) {
+        let curr = Array.isArray(answers[qId]) ? [...answers[qId]] : (answers[qId] ? [answers[qId]] : []);
+        if (curr.includes(key)) {
+          curr = curr.filter(k => k !== key);
+        } else {
+          curr.push(key);
+          curr.sort();
+        }
+        answers[qId] = curr;
+      } else {
+        answers[qId] = key;
+      }
+
+      const statusInd = document.getElementById('saveStatusIndicator');
+      statusInd.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span><span>Saving...</span>`;
+
+      renderQuestion(currentIndex);
+      renderPalette();
+
+      try {
+        const payload = {
+          session_token: token,
+          question_id: qId,
+          idempotency_key: `${qId}_${Date.now()}`
+        };
+        if (isMultiple) {
+          payload.selected_options = answers[qId] || [];
+          payload.selected_option = (answers[qId] && answers[qId].length) ? answers[qId][0] : null;
+        } else {
+          payload.selected_option = answers[qId];
+          payload.selected_options = answers[qId] ? [answers[qId]] : [];
+        }
+
+        await fetch('/api/mq/save-answer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        statusInd.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-emerald-700">Saved</span>`;
+      } catch (e) {
+        statusInd.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500"></span><span class="text-rose-700">Unsaved (offline)</span>`;
+      }
+    }
+
+    // Render palette
+    function renderPalette() {
+      const grid = document.getElementById('paletteGrid');
+      grid.innerHTML = '';
+      let answeredCount = 0;
+      let reviewCount = 0;
+
+      questions.forEach((q, i) => {
+        const ansVal = answers[q.question_id];
+        const isAnswered = Array.isArray(ansVal) ? ansVal.length > 0 : Boolean(ansVal);
+        const isFlagged = Boolean(flagged[q.question_id]);
+        const isCurrent = (i === currentIndex);
+
+        if (isAnswered) answeredCount++;
+        if (isFlagged) reviewCount++;
+
+        let bgClass = 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-300';
+        if (isAnswered) bgClass = 'bg-emerald-600 text-white border-emerald-700';
+        if (isFlagged) bgClass = 'bg-amber-400 text-slate-900 border-amber-500';
+
+        const ringClass = isCurrent ? 'ring-2 ring-indigo-600 ring-offset-2 font-extrabold' : '';
+
+        const btn = document.createElement('button');
+        btn.className = `h-9 rounded-lg border font-bold text-xs transition ${bgClass} ${ringClass}`;
+        btn.textContent = i + 1;
+        btn.addEventListener('click', () => renderQuestion(i));
+        grid.appendChild(btn);
+      });
+
+      document.getElementById('countAnswered').textContent = answeredCount;
+      document.getElementById('countReview').textContent = reviewCount;
+      document.getElementById('countUnanswered').textContent = questions.length - answeredCount;
+    }
+
+    // Navigation buttons
+    document.getElementById('btnPrev').addEventListener('click', () => {
+      if (currentIndex > 0) renderQuestion(currentIndex - 1);
+    });
+    document.getElementById('btnNext').addEventListener('click', () => {
+      if (currentIndex < questions.length - 1) {
+        renderQuestion(currentIndex + 1);
+      } else {
+        confirmSubmission();
+      }
+    });
+    document.getElementById('btnClear').addEventListener('click', async () => {
+      const q = questions[currentIndex];
+      if (!q) return;
+      const qId = q.question_id;
+      delete answers[qId];
+      renderQuestion(currentIndex);
+      renderPalette();
+      try {
+        await fetch('/api/mq/save-answer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_token: token,
+            question_id: qId,
+            selected_option: null,
+            selected_options: [],
+            idempotency_key: `${qId}_clear_${Date.now()}`
+          })
+        });
+      } catch (e) {}
+    });
+    document.getElementById('btnFlagReview').addEventListener('click', () => {
+      const qId = questions[currentIndex].question_id;
+      flagged[qId] = !flagged[qId];
+      renderQuestion(currentIndex);
+      renderPalette();
+    });
+
+    // Submission handler
+    document.getElementById('btnSubmitExam').addEventListener('click', confirmSubmission);
+
+    function confirmSubmission() {
+      const answered = Object.keys(answers).length;
+      const unans = questions.length - answered;
+      const msg = `Are you sure you want to finalize and submit your examination?\n\n• Answered: ${answered}\n• Unanswered: ${unans}\n\nYou cannot change your answers after submission.`;
+      if (confirm(msg)) {
+        submitExam(false, 'Submitted by student');
+      }
+    }
+
+    async function submitExam(auto = false, reason = '') {
+      if (isSubmitting) return;
+      isSubmitting = true;
+      clearInterval(timerInterval);
+
+      try {
+        const res = await fetch('/api/mq/submit-attempt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_token: token, auto, reason })
+        });
+        const json = await res.json();
+        alert(auto ? `Examination auto-submitted: ${reason}` : 'Examination submitted successfully! Attendance has been recorded.');
+        window.location.href = '/mathquiz/result';
+      } catch (err) {
+        alert('Submission error. Retrying...');
+        isSubmitting = false;
+      }
+    }
+
+    // Initialize
+    loadPaper();
+  </script>
+</body>
+</html>

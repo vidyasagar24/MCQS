@@ -1,0 +1,596 @@
+{% extends "base.html" %}
+
+{% block title %}MathQuiz – Examination Administration{% endblock %}
+
+{% block extra_head %}
+<!-- MathJax 3 Configuration for Admin Preview -->
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      packages: {'[+]': ['ams']}
+    },
+    options: { enableMenu: false }
+  };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Top Navigation & Title -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200">
+    <div>
+      <div class="flex items-center space-x-2">
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">MathQuiz v1.0</span>
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Mathematics Examination Console</h1>
+      </div>
+      <p class="text-xs text-slate-500 mt-1">Manage quizzes, question banks, distribution algorithms, proctoring, and official result releases.</p>
+    </div>
+    <div class="flex items-center space-x-3">
+      <a href="/mathquiz/student" target="_blank" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 shadow-sm transition">
+        Open Student Portal ↗
+      </a>
+      <button id="btnUploadModal" class="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 transition">
+        <i class="fa-solid fa-cloud-arrow-up me-1"></i> Bulk Upload Questions
+      </button>
+      <button id="btnNewQuizModal" class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-100 transition">
+        + Create New Examination
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+      <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Quizzes</span>
+      <div class="text-2xl font-black text-slate-900 mt-1">{{ quizzes|length }}</div>
+    </div>
+    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+      <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Question Bank</span>
+      <div class="text-2xl font-black text-indigo-600 mt-1">{{ total_questions }}</div>
+    </div>
+    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+      <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Registered Students</span>
+      <div class="text-2xl font-black text-slate-900 mt-1">{{ total_students }}</div>
+    </div>
+    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+      <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Max Concurrency Target</span>
+      <div class="text-2xl font-black text-emerald-600 mt-1">500</div>
+    </div>
+  </div>
+
+  <!-- Admin Sub-Navigation Tabs -->
+  <div class="border-b border-slate-200 flex space-x-6">
+    <button class="admin-tab pb-3 text-sm font-bold text-indigo-600 border-b-2 border-indigo-600" data-tab="quizzes">
+      Examinations &amp; Releases
+    </button>
+    <button class="admin-tab pb-3 text-sm font-semibold text-slate-500 hover:text-slate-800" data-tab="questions">
+      LaTeX Question Editor
+    </button>
+    <button class="admin-tab pb-3 text-sm font-semibold text-slate-500 hover:text-slate-800" data-tab="templates">
+      Download Template Centre
+    </button>
+  </div>
+
+  <!-- TAB 1: Quizzes & Results -->
+  <div id="tabContent-quizzes" class="tab-pane space-y-4">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="text-sm font-bold text-slate-900">Configured Examinations</h3>
+        <span class="text-xs text-slate-500">{{ quizzes|length }} examinations listed</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-700">
+          <thead class="bg-slate-50 text-xs uppercase font-bold text-slate-500 border-b border-slate-100">
+            <tr>
+              <th class="px-6 py-3">Quiz Title</th>
+              <th class="px-4 py-3">Code</th>
+              <th class="px-4 py-3">Duration</th>
+              <th class="px-4 py-3">Distribution Mode</th>
+              <th class="px-4 py-3">Result Release Status</th>
+              <th class="px-6 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 font-medium">
+            {% if quizzes %}
+              {% for q in quizzes %}
+              <tr class="hover:bg-slate-50/50">
+                <td class="px-6 py-4">
+                  <div class="font-bold text-slate-900">{{ q.title }}</div>
+                  <div class="text-xs text-slate-400">{{ q.total_questions }} Questions · {{ q.total_marks }} Marks</div>
+                </td>
+                <td class="px-4 py-4 mono font-bold text-indigo-700">{{ q.quiz_code }}</td>
+                <td class="px-4 py-4">{{ q.duration_minutes }} min</td>
+                <td class="px-4 py-4">
+                  <span class="inline-block px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-800">
+                    {{ q.distribution_type }}
+                  </span>
+                </td>
+                <td class="px-4 py-4">
+                  {% if q.result_release_status == 'published' %}
+                    <span class="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                      Published
+                    </span>
+                  {% else %}
+                    <span class="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                      Hidden from Students
+                    </span>
+                  {% endif %}
+                </td>
+                <td class="px-6 py-4 text-right space-x-2">
+                  {% if q.result_release_status == 'published' %}
+                    <button class="btn-toggle-pub px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100" data-id="{{ q.id }}" data-pub="0">
+                      Hide Results
+                    </button>
+                  {% else %}
+                    <button class="btn-toggle-pub px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white shadow-sm" data-id="{{ q.id }}" data-pub="1">
+                      Publish Results
+                    </button>
+                  {% endif %}
+                  <a href="/api/mq/export-results/{{ q.id }}" class="px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition inline-block">
+                    Export 7-Sheet Excel
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="6" class="px-6 py-8 text-center text-slate-400">
+                  No examinations created yet. Click "+ Create New Examination" to start.
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: LaTeX Question Editor -->
+  <div id="tabContent-questions" class="tab-pane hidden space-y-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Question Form -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <h3 class="text-base font-bold text-slate-900">LaTeX Question Editor</h3>
+        
+        <!-- Symbol Insertion Toolbar -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5">Insert Common Math Symbols</label>
+          <div class="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded-xl">
+            <button type="button" class="sym-btn px-2 py-1 bg-white border border-slate-200 rounded text-xs font-bold hover:bg-indigo-50" data-code="\frac{a}{b}">$\frac{a}{b}$</button>
+            <button type="button" class="sym-btn px-2 py-1 bg-white border border-slate-200 rounded text-xs font-bold hover:bg-indigo-50" data-code="\sqrt{x}">$\sqrt{x}$</button>
+            <button type="button" class="sym-btn px-2 py-1 bg-white border border-slate-200 rounded text-xs font-bold hover:bg-indigo-50" data-code="\int_{a}^{b} f(x)dx">$\int$</button>
+            <button type="button" class="sym-btn px-2 py-1 bg-white border border-slate-200 rounded text-xs font-bold hover:bg-indigo-50" data-code="\sum_{i=1}^{n}">$\sum$</button>
+            <button type="button" class="sym-btn px-2 py-1 bg-white border border-slate-200 rounded text-xs font-bold hover:bg-indigo-50" data-code="\lim_{x \to 0}">$\lim$</button>
+            <button type="button" class="sym-btn px-2 py-1 bg-white border border-slate-200 rounded text-xs font-bold hover:bg-indigo-50" data-code="\begin{pmatrix} a & b \\ c & d \end{pmatrix}">Matrix</button>
+            <button type="button" class="sym-btn px-2 py-1 bg-white border border-slate-200 rounded text-xs font-bold hover:bg-indigo-50" data-code="\alpha">$\alpha$</button>
+            <button type="button" class="sym-btn px-2 py-1 bg-white border border-slate-200 rounded text-xs font-bold hover:bg-indigo-50" data-code="\beta">$\beta$</button>
+            <button type="button" class="sym-btn px-2 py-1 bg-white border border-slate-200 rounded text-xs font-bold hover:bg-indigo-50" data-code="\theta">$\theta$</button>
+            <button type="button" class="sym-btn px-2 py-1 bg-white border border-slate-200 rounded text-xs font-bold hover:bg-indigo-50" data-code="\lambda">$\lambda$</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Question Body (LaTeX $...$ or $$...$$)</label>
+          <textarea id="edQText" rows="4" class="w-full p-3 border border-slate-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-indigo-500" placeholder="Evaluate the integral: $\int_0^1 x^2 dx$"></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Option A</label>
+            <input type="text" id="edOptA" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" placeholder="1/2">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Option B</label>
+            <input type="text" id="edOptB" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" placeholder="1/3">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Option C</label>
+            <input type="text" id="edOptC" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" placeholder="1/4">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Option D</label>
+            <input type="text" id="edOptD" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" placeholder="1/5">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Correct Answer</label>
+            <select id="edCorrect" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold text-emerald-700">
+              <option value="A">Option A</option>
+              <option value="B" selected>Option B</option>
+              <option value="C">Option C</option>
+              <option value="D">Option D</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Marks</label>
+            <input type="number" id="edMarks" value="2.0" step="0.5" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Negative Marks</label>
+            <input type="number" id="edNegMarks" value="0.5" step="0.25" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-rose-600">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Solution / Explanation</label>
+          <input type="text" id="edExpl" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" placeholder="Power rule: [x^3 / 3] from 0 to 1 = 1/3.">
+        </div>
+      </div>
+
+      <!-- Live Preview -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <h3 class="text-base font-bold text-slate-900">Live Mathematical Preview</h3>
+        <p class="text-xs text-slate-400">Renders mathematical expressions dynamically using MathJax 3.</p>
+        <div class="p-6 bg-slate-50 border border-slate-200 rounded-2xl min-h-[300px] space-y-4">
+          <div id="pvQuestion" class="text-base font-medium text-slate-900">
+            $\int_0^1 x^2 dx$
+          </div>
+          <div class="space-y-2 pt-2 border-t border-slate-200" id="pvOptions">
+            <div class="p-2.5 bg-white rounded-lg border border-slate-200 text-sm">A) $1/2$</div>
+            <div class="p-2.5 bg-emerald-50 rounded-lg border border-emerald-300 text-sm font-semibold text-emerald-950">B) $1/3$ (Correct)</div>
+            <div class="p-2.5 bg-white rounded-lg border border-slate-200 text-sm">C) $1/4$</div>
+            <div class="p-2.5 bg-white rounded-lg border border-slate-200 text-sm">D) $1/5$</div>
+          </div>
+          <div id="pvSolution" class="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-900">
+            <strong>Solution:</strong> $\left[\frac{x^3}{3}\right]_0^1 = \frac{1}{3} - 0 = \frac{1}{3}$.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: Download Template Centre (15 Templates) -->
+  <div id="tabContent-templates" class="tab-pane hidden space-y-6">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <h3 class="text-lg font-bold text-slate-900 mb-1">15 Downloadable Question Templates</h3>
+      <p class="text-xs text-slate-500 mb-6">Download distribution-specific templates with pre-formatted mathematical LaTeX notation, options, and metadata.</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Random Pool Card -->
+        <div class="border border-slate-200 rounded-xl p-5 bg-slate-50 space-y-3">
+          <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-100 text-indigo-800">Option 1</span>
+          <h4 class="font-bold text-slate-900">Random Pool Templates</h4>
+          <p class="text-xs text-slate-600">Draws random questions per topic quota. Includes pool IDs and difficulty quotas.</p>
+          <div class="flex flex-wrap gap-2 pt-2">
+            <a href="/mathquiz/templates/download/random-pool/xlsx" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm">Excel (.xlsx)</a>
+            <a href="/mathquiz/templates/download/random-pool/tex" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm">LaTeX (.tex)</a>
+            <a href="/mathquiz/templates/download/random-pool/docx" class="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm">Word (.docx)</a>
+            <a href="/mathquiz/templates/download/random-pool/csv" class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">CSV (.csv)</a>
+            <a href="/mathquiz/templates/download/random-pool/json" class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">JSON (.json)</a>
+          </div>
+        </div>
+
+        <!-- Round Robin Card -->
+        <div class="border border-slate-200 rounded-xl p-5 bg-slate-50 space-y-3">
+          <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-100 text-indigo-800">Option 2</span>
+          <h4 class="font-bold text-slate-900">Round-Robin Templates</h4>
+          <p class="text-xs text-slate-600">Cyclic allocation for balanced question sets (Set A, B, C, D) and individual offsets.</p>
+          <div class="flex flex-wrap gap-2 pt-2">
+            <a href="/mathquiz/templates/download/round-robin/xlsx" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm">Excel (.xlsx)</a>
+            <a href="/mathquiz/templates/download/round-robin/tex" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm">LaTeX (.tex)</a>
+            <a href="/mathquiz/templates/download/round-robin/docx" class="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm">Word (.docx)</a>
+            <a href="/mathquiz/templates/download/round-robin/csv" class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">CSV (.csv)</a>
+            <a href="/mathquiz/templates/download/round-robin/json" class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">JSON (.json)</a>
+          </div>
+        </div>
+
+        <!-- All Questions Card -->
+        <div class="border border-slate-200 rounded-xl p-5 bg-slate-50 space-y-3">
+          <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-100 text-indigo-800">Option 3</span>
+          <h4 class="font-bold text-slate-900">All Questions Templates</h4>
+          <p class="text-xs text-slate-600">Standard assessment where every candidate answers all questions in bank.</p>
+          <div class="flex flex-wrap gap-2 pt-2">
+            <a href="/mathquiz/templates/download/all-questions/xlsx" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm">Excel (.xlsx)</a>
+            <a href="/mathquiz/templates/download/all-questions/tex" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm">LaTeX (.tex)</a>
+            <a href="/mathquiz/templates/download/all-questions/docx" class="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm">Word (.docx)</a>
+            <a href="/mathquiz/templates/download/all-questions/csv" class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">CSV (.csv)</a>
+            <a href="/mathquiz/templates/download/all-questions/json" class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">JSON (.json)</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Student Roster Template -->
+      <div class="mt-6 p-4 bg-indigo-50/60 border border-indigo-200 rounded-xl flex items-center justify-between">
+        <div>
+          <h4 class="font-bold text-sm text-indigo-950">Student Cohort Registration Template</h4>
+          <p class="text-xs text-indigo-700">Pre-formatted roster spreadsheet for bulk enrolling students with SAP IDs, emails, and sections.</p>
+        </div>
+        <a href="/mathquiz/templates/download/general/xlsx" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm">
+          Download Roster (.xlsx)
+        </a>
+      </div>
+    </div>
+  </div>
+  <!-- MODAL: Bulk Upload Questions -->
+  <div id="modalUpload" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl border border-slate-100">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-up text-emerald-600"></i> Bulk Question Bank Ingestion
+        </h3>
+        <button id="btnCloseUploadModal" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+      </div>
+
+      <form id="formUploadQuestions" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Target Examination (Optional)</label>
+          <select id="upQuizId" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm">
+            <option value="">-- General Question Bank --</option>
+            {% for q in quizzes %}
+              <option value="{{ q.id }}">{{ q.title }} ({{ q.quiz_code }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Question File (.xlsx, .csv, .json, .tex, .docx)</label>
+          <input type="file" id="upFile" accept=".xlsx,.csv,.json,.tex,.docx" required class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+          <p class="text-xs text-slate-500 mt-1">Accepted formats: SheetJS Excel, CSV, JSON, LaTeX (.tex), Word (.docx).</p>
+        </div>
+
+        <div id="uploadFeedback" class="hidden p-3 rounded-xl text-xs font-medium"></div>
+
+        <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100">
+          <button type="button" id="btnCancelUpload" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Cancel</button>
+          <button type="submit" id="btnSubmitUpload" class="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 flex items-center gap-1.5">
+            <span>Import Questions</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Create New Examination -->
+  <div id="modalNewQuiz" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-pen-ruler text-indigo-600"></i> Create New Examination
+        </h3>
+        <button id="btnCloseNewQuizModal" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+      </div>
+
+      <form id="formNewQuiz" class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <div class="col-span-2">
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Examination Title</label>
+            <input type="text" id="nqTitle" required class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" placeholder="e.g. Applied Mathematics II Mid-Term">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Quiz Code (Passcode)</label>
+            <input type="text" id="nqCode" required class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-mono uppercase" placeholder="e.g. MATH2026">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Subject</label>
+            <select id="nqSubject" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm">
+              {% for s in subjects %}
+                <option value="{{ s.id }}">{{ s.subject_code }} - {{ s.subject_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Duration (Min)</label>
+            <input type="number" id="nqDuration" value="60" min="5" max="300" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Total Questions</label>
+            <input type="number" id="nqQuestions" value="10" min="1" max="200" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Total Marks</label>
+            <input type="number" id="nqTotalMarks" value="20" min="1" max="1000" step="0.5" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Question Distribution Algorithm</label>
+          <select id="nqDistribution" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-medium">
+            <option value="random_pool">Random Pool (Dynamic topic & difficulty quota sampling)</option>
+            <option value="round_robin_set">Round-Robin Question Sets (Set A, Set B, Set C, Set D)</option>
+            <option value="round_robin_individual">Round-Robin Individual Questions (Rotational starting offset)</option>
+            <option value="all_questions">All Questions (Every candidate answers complete bank)</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+          <div>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="nqNegEnabled" class="rounded text-indigo-600">
+              <span class="text-xs font-bold text-slate-700">Enable Negative Marking</span>
+            </label>
+            <input type="number" id="nqNegMarks" value="0.25" step="0.25" min="0" class="w-full mt-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs" placeholder="Negative mark per wrong choice">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Max Violation Strikes</label>
+            <input type="number" id="nqStrikes" value="3" min="1" max="10" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs">
+          </div>
+        </div>
+
+        <div id="newQuizFeedback" class="hidden p-3 rounded-xl text-xs font-medium"></div>
+
+        <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100">
+          <button type="button" id="btnCancelNewQuiz" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Cancel</button>
+          <button type="submit" id="btnSubmitNewQuiz" class="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-100">
+            Create Examination
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Tab switching
+  document.querySelectorAll('.admin-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.admin-tab').forEach(t => {
+        t.classList.remove('text-indigo-600', 'border-b-2', 'border-indigo-600');
+        t.classList.add('text-slate-500');
+      });
+      tab.classList.add('text-indigo-600', 'border-b-2', 'border-indigo-600');
+      tab.classList.remove('text-slate-500');
+
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
+      document.getElementById('tabContent-' + tab.dataset.tab).classList.remove('hidden');
+    });
+  });
+
+  // Result publication toggle
+  document.querySelectorAll('.btn-toggle-pub').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const qId = btn.dataset.id;
+      const pub = (btn.dataset.pub === '1');
+      const actionName = pub ? 'PUBLISH' : 'HIDE';
+      if (!confirm(`Are you sure you want to ${actionName} results for this examination?`)) return;
+
+      try {
+        const res = await fetch('/api/mq/publish-results', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quiz_id: qId, publish: pub })
+        });
+        const json = await res.json();
+        alert(json.message || 'Updated publication status.');
+        window.location.reload();
+      } catch (e) {
+        alert('Network error updating publication status.');
+      }
+    });
+  });
+
+  // Math symbol insertion
+  document.querySelectorAll('.sym-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const txtArea = document.getElementById('edQText');
+      const sym = btn.dataset.code;
+      txtArea.value += ' ' + sym;
+      updatePreview();
+    });
+  });
+
+  function updatePreview() {
+    const qText = document.getElementById('edQText').value || 'Question expression appears here.';
+    document.getElementById('pvQuestion').innerHTML = qText;
+    if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([document.getElementById('pvQuestion')]);
+  }
+  document.getElementById('edQText').addEventListener('input', updatePreview);
+
+  // Upload Questions Modal
+  const modalUpload = document.getElementById('modalUpload');
+  document.getElementById('btnUploadModal').addEventListener('click', () => {
+    modalUpload.classList.remove('hidden');
+  });
+  document.getElementById('btnCloseUploadModal').addEventListener('click', () => {
+    modalUpload.classList.add('hidden');
+  });
+  document.getElementById('btnCancelUpload').addEventListener('click', () => {
+    modalUpload.classList.add('hidden');
+  });
+
+  document.getElementById('formUploadQuestions').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fileInput = document.getElementById('upFile');
+    if (!fileInput.files.length) return;
+
+    const fd = new FormData();
+    fd.append('file', fileInput.files[0]);
+    const quizId = document.getElementById('upQuizId').value;
+    if (quizId) fd.append('quiz_id', quizId);
+
+    const fb = document.getElementById('uploadFeedback');
+    fb.className = 'p-3 rounded-xl text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 block';
+    fb.textContent = 'Uploading and validating mathematical questions...';
+
+    const btn = document.getElementById('btnSubmitUpload');
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/mq/upload-questions', {
+        method: 'POST',
+        body: fd
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        fb.className = 'p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 block';
+        fb.textContent = 'Import error: ' + (json.error || 'Failed to import file.');
+      } else {
+        const d = json.data;
+        fb.className = 'p-3 rounded-xl text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 block';
+        fb.textContent = `Success! Total: ${d.total_records}, Imported: ${d.successful_records}, Failed: ${d.failed_records}. Reloading...`;
+        setTimeout(() => window.location.reload(), 1500);
+      }
+    } catch (err) {
+      fb.className = 'p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 block';
+      fb.textContent = 'Network error communicating with server.';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // Create New Examination Modal
+  const modalNewQuiz = document.getElementById('modalNewQuiz');
+  document.getElementById('btnNewQuizModal').addEventListener('click', () => {
+    modalNewQuiz.classList.remove('hidden');
+  });
+  document.getElementById('btnCloseNewQuizModal').addEventListener('click', () => {
+    modalNewQuiz.classList.add('hidden');
+  });
+  document.getElementById('btnCancelNewQuiz').addEventListener('click', () => {
+    modalNewQuiz.classList.add('hidden');
+  });
+
+  document.getElementById('formNewQuiz').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+      title: document.getElementById('nqTitle').value,
+      quiz_code: document.getElementById('nqCode').value,
+      subject_id: parseInt(document.getElementById('nqSubject').value),
+      duration_minutes: parseInt(document.getElementById('nqDuration').value),
+      total_questions: parseInt(document.getElementById('nqQuestions').value),
+      total_marks: parseFloat(document.getElementById('nqTotalMarks').value),
+      distribution_type: document.getElementById('nqDistribution').value,
+      negative_marking_enabled: document.getElementById('nqNegEnabled').checked,
+      negative_marks: parseFloat(document.getElementById('nqNegMarks').value || 0),
+      max_violations_allowed: parseInt(document.getElementById('nqStrikes').value)
+    };
+
+    const fb = document.getElementById('newQuizFeedback');
+    fb.className = 'p-3 rounded-xl text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 block';
+    fb.textContent = 'Configuring examination and security policies...';
+
+    const btn = document.getElementById('btnSubmitNewQuiz');
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/mq/create-quiz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        fb.className = 'p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 block';
+        fb.textContent = 'Creation error: ' + (json.error || 'Failed to create quiz.');
+      } else {
+        fb.className = 'p-3 rounded-xl text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 block';
+        fb.textContent = 'Quiz created successfully! Reloading...';
+        setTimeout(() => window.location.reload(), 1200);
+      }
+    } catch (err) {
+      fb.className = 'p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 block';
+      fb.textContent = 'Network error communicating with server.';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+{% endblock %}

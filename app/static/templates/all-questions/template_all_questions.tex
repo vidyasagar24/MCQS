@@ -1,0 +1,96 @@
+% MathQuiz Question Template - Mode: ALL_QUESTIONS
+\documentclass{article}
+\usepackage{amsmath,amssymb,amsfonts}
+\begin{document}
+% MODE: ALL_QUESTIONS
+% TOTAL_QUESTIONS: 8
+
+\begin{question}[Pool_Calculus]
+% TOPIC: Integral Calculus
+% MARKS: 2.0 | NEGATIVE: 0.5
+Evaluate the definite integral: $\int_0^{\pi/2} \frac{\sin^3 x}{\sin^3 x + \cos^3 x} \, dx$
+  \choice $\pi / 2$
+  \CorrectChoice $\pi / 4$
+  \choice $\pi / 6$
+  \choice $1$
+% EXPLANATION: Using the property $\int_a^b f(x)dx = \int_a^b f(a+b-x)dx$, $2I = \int_0^{\pi/2} 1 dx = \pi/2 \implies I = \pi/4$.
+\end{question}
+
+\begin{question}[Pool_Calculus]
+% TOPIC: Differential Calculus
+% MARKS: 2.0 | NEGATIVE: 0.5
+Compute the limit: $\lim_{x \to 0} \frac{\sin(3x) - 3x}{x^3}$
+  \CorrectChoice $-9/2$
+  \choice $9/2$
+  \choice $-3$
+  \choice $0$
+% EXPLANATION: Expanding $\sin(3x) = 3x - \frac{(3x)^3}{6} + \dots = 3x - \frac{27x^3}{6}$, so limit is $-\frac{27}{6} = -9/2$.
+\end{question}
+
+\begin{question}[Pool_Algebra]
+% TOPIC: Linear Algebra
+% MARKS: 2.0 | NEGATIVE: 0.5
+The eigenvalues of matrix $A = \begin{pmatrix} 4 & 1 \\ 2 & 3 \end{pmatrix}$ are:
+  \CorrectChoice $5, 2$
+  \choice $6, 1$
+  \choice $4, 3$
+  \choice $-5, 2$
+% EXPLANATION: Characteristic equation is $\det(A - \lambda I) = \lambda^2 - 7\lambda + 10 = 0 \implies (\lambda - 5)(\lambda - 2) = 0$.
+\end{question}
+
+\begin{question}[Pool_Algebra]
+% TOPIC: Linear Algebra
+% MARKS: 1.0 | NEGATIVE: 0.25
+Find the determinant of $M = \begin{pmatrix} 1 & 2 & 3 \\ 0 & 4 & 5 \\ 0 & 0 & -2 \end{pmatrix}$
+  \choice $8$
+  \CorrectChoice $-8$
+  \choice $-10$
+  \choice $0$
+% EXPLANATION: For an upper triangular matrix, determinant is the product of diagonal elements: $1 \times 4 \times (-2) = -8$.
+\end{question}
+
+\begin{question}[Pool_Probability]
+% TOPIC: Probability Distributions
+% MARKS: 1.5 | NEGATIVE: 0.5
+If $X \sim B(10, 0.4)$, calculate the variance $\mathrm{Var}(X)$:
+  \choice $4.0$
+  \choice $1.6$
+  \choice $6.0$
+  \CorrectChoice $2.4$
+% EXPLANATION: For binomial distribution, $\mathrm{Var}(X) = n p (1 - p) = 10 \times 0.4 \times 0.6 = 2.4$.
+\end{question}
+
+\begin{question}[Pool_Probability]
+% TOPIC: Probability
+% MARKS: 1.5 | NEGATIVE: 0.5
+Given $P(A) = 0.5$, $P(B) = 0.4$, and $P(A \cap B) = 0.2$, find conditional probability $P(A \mid B)$:
+  \CorrectChoice $0.5$
+  \choice $0.2$
+  \choice $0.8$
+  \choice $0.4$
+% EXPLANATION: $P(A \mid B) = \frac{P(A \cap B)}{P(B)} = \frac{0.2}{0.4} = 0.5$.
+\end{question}
+
+\begin{question}[Pool_DiffEq]
+% TOPIC: Differential Equations
+% MARKS: 2.0 | NEGATIVE: 0.5
+The integrating factor for linear differential equation $\frac{dy}{dx} + y \tan x = \sec x$ is:
+  \choice $\cos x$
+  \choice $\tan x$
+  \CorrectChoice $\sec x$
+  \choice $e^{\tan x}$
+% EXPLANATION: $IF = e^{\int \tan x dx} = e^{\ln|\sec x|} = \sec x$.
+\end{question}
+
+\begin{question}[Pool_DiffEq]
+% TOPIC: Laplace Transforms
+% MARKS: 2.0 | NEGATIVE: 0.5
+Compute Laplace transform $\mathcal{L}\{t^2 e^{3t}\}$ for $s > 3$:
+  \CorrectChoice $\frac{2}{(s-3)^3}$
+  \choice $\frac{2}{(s+3)^3}$
+  \choice $\frac{1}{(s-3)^2}$
+  \choice $\frac{6}{(s-3)^3}$
+% EXPLANATION: By frequency shifting theorem: $\mathcal{L}\{t^2\} = \frac{2}{s^3} \implies \mathcal{L}\{t^2 e^{3t}\} = \frac{2}{(s-3)^3}$.
+\end{question}
+
+\end{document}
