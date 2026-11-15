@@ -127,8 +127,9 @@
           return showAlert(json.error || 'No records found for the given details.');
         }
 
-        const data = json.results;
-        if (!data || data.length === 0) {
+        const rawData = json.results;
+        const data = Array.isArray(rawData) ? rawData : (rawData ? [rawData] : []);
+        if (data.length === 0) {
           return showAlert('No examination submissions found for this student account.');
         }
 

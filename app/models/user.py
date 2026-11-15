@@ -40,6 +40,10 @@ class Student(db.Model):
     student_id_code = db.Column(db.String(50), nullable=True)
     register_number = db.Column(db.String(50), unique=True, nullable=False, index=True)  # SAP ID e.g. 2026CE001
     student_name = db.Column(db.String(120), nullable=False)
+    programme_id = db.Column(db.Integer, nullable=False, default=1)
+    academic_year_id = db.Column(db.Integer, nullable=False, default=3)
+    current_semester_id = db.Column(db.Integer, nullable=False, default=2)
+    section_id = db.Column(db.Integer, nullable=False, default=1)
     email = db.Column(db.String(120), nullable=True)
     status = db.Column(db.String(20), default='Active', nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

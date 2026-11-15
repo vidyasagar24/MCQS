@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS public.mq_quizzes (
     shuffle_options BOOLEAN DEFAULT TRUE,
     max_violations_allowed INTEGER DEFAULT 3,
     result_release_status VARCHAR(20) NOT NULL DEFAULT 'hidden' CHECK (result_release_status IN ('hidden', 'published')),
-    status VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'active', 'completed', 'archived')),
+    status VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'active', 'deactive', 'inactive', 'completed', 'archived')),
     created_by INTEGER NOT NULL REFERENCES public.users(id),
     starts_at TIMESTAMPTZ,
     ends_at TIMESTAMPTZ,
@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS public.mq_questions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     quiz_id UUID REFERENCES public.mq_quizzes(id) ON DELETE CASCADE,
     question_bank_id UUID REFERENCES public.mq_question_banks(id) ON DELETE SET NULL,
+    subject_id INTEGER REFERENCES public.subjects(id) ON DELETE SET NULL,
     batch_name VARCHAR(100) DEFAULT 'Batch 1',
     topic VARCHAR(150),
     subtopic VARCHAR(150),
@@ -140,6 +141,7 @@ CREATE TABLE IF NOT EXISTS public.mq_attempts (
     total_marks NUMERIC(10,2),
     submission_reason TEXT,
     client_ip VARCHAR(50),
+    system_fingerprint VARCHAR(100),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT uq_mq_attempt_quiz_student_attempt_number UNIQUE (quiz_id, student_id, attempt_number)
 );
@@ -280,6 +282,7 @@ CREATE INDEX IF NOT EXISTS idx_mq_quizzes_status ON public.mq_quizzes(status);
 CREATE INDEX IF NOT EXISTS idx_mq_quiz_students_sap ON public.mq_quiz_students(sap_id);
 CREATE INDEX IF NOT EXISTS idx_mq_quiz_students_quiz_eligible ON public.mq_quiz_students(quiz_id, is_eligible);
 CREATE INDEX IF NOT EXISTS idx_mq_questions_quiz ON public.mq_questions(quiz_id);
+CREATE INDEX IF NOT EXISTS idx_mq_questions_subject ON public.mq_questions(subject_id);
 CREATE INDEX IF NOT EXISTS idx_mq_attempts_token ON public.mq_attempts(session_token_hash);
 CREATE INDEX IF NOT EXISTS idx_mq_attempts_quiz_status ON public.mq_attempts(quiz_id, status);
 CREATE INDEX IF NOT EXISTS idx_mq_attempts_expiry ON public.mq_attempts(expires_at) WHERE status = 'in_progress';

@@ -66,7 +66,7 @@ class MQQuiz(db.Model):
     updated_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    subject = db.relationship('Subject', backref='quizzes')
+    subject = db.relationship('Subject', backref='quizzes', lazy='joined')
     creator = db.relationship('User', backref='created_quizzes')
     questions = db.relationship('MQQuestion', back_populates='quiz', cascade='all, delete-orphan')
     students = db.relationship('MQQuizStudent', back_populates='quiz', cascade='all, delete-orphan')
@@ -112,6 +112,7 @@ class MQQuestion(db.Model):
     id = db.Column(GUID(), primary_key=True, default=uuid.uuid4)
     quiz_id = db.Column(GUID(), db.ForeignKey('mq_quizzes.id', ondelete='CASCADE'), nullable=True)
     question_bank_id = db.Column(GUID(), db.ForeignKey('mq_question_banks.id', ondelete='SET NULL'), nullable=True)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id', ondelete='SET NULL'), nullable=True)
     batch_name = db.Column(db.String(100), default='Batch 1')
     topic = db.Column(db.String(150), nullable=True)
     subtopic = db.Column(db.String(150), nullable=True)
@@ -126,7 +127,8 @@ class MQQuestion(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
 
     quiz = db.relationship('MQQuiz', back_populates='questions')
-    options = db.relationship('MQQuestionOption', back_populates='question', cascade='all, delete-orphan', order_by='MQQuestionOption.display_order')
+    subject = db.relationship('Subject', backref='questions', lazy='joined')
+    options = db.relationship('MQQuestionOption', back_populates='question', cascade='all, delete-orphan', order_by='MQQuestionOption.display_order', lazy='selectin')
 
 
 class MQQuestionOption(db.Model):
@@ -211,6 +213,7 @@ class MQAttempt(db.Model):
     total_marks = db.Column(db.Numeric(10, 2), nullable=True)
     submission_reason = db.Column(db.Text, nullable=True)
     client_ip = db.Column(db.String(50), nullable=True)
+    system_fingerprint = db.Column(db.String(100), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
 
     __table_args__ = (

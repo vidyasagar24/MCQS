@@ -51,23 +51,139 @@
   <!-- Translucent Dynamic Watermark -->
   <div id="watermark"></div>
 
-  <!-- Security Strike Modal Overlay -->
-  <div id="strikeModal" class="fixed inset-0 bg-slate-950/90 z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-md w-full p-6 text-center border-2 border-rose-600 shadow-2xl">
-      <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-2xl font-bold">
+  <!-- Mandatory Fullscreen Entry Modal -->
+  <div id="fullscreenEntryModal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-8 text-center shadow-2xl border border-slate-200 space-y-5">
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-3xl font-extrabold shadow-inner">
+        ⛶
+      </div>
+      <div>
+        <span class="inline-block px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold rounded-full uppercase tracking-wider mb-2">
+          Proctored Environment Active
+        </span>
+        <h2 class="text-2xl font-black text-slate-900">Mandatory Fullscreen Mode</h2>
+        <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+          This online mathematics examination requires an exclusive fullscreen window. 
+          Exiting fullscreen, switching windows, or opening tabs will record disciplinary violation strikes.
+        </p>
+      </div>
+
+      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left text-xs text-slate-700 space-y-2">
+        <div class="flex items-center gap-2 font-bold text-slate-900">
+          <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+          Candidate Verification Confirmed
+        </div>
+        <p id="fsCandidateBadge" class="font-mono text-indigo-700 font-semibold"></p>
+        <p class="text-slate-500">Ensure all other browser windows and background applications are closed before beginning.</p>
+      </div>
+
+      <button id="btnStartFullscreenExam" class="w-full py-3.5 px-6 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-200 transition flex items-center justify-center gap-2">
+        <span>Enter Fullscreen &amp; Begin Examination</span>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Security Warning Strike Modal Overlay (Used when currentStrikes < maxStrikes) -->
+  <div id="strikeModal" class="fixed inset-0 bg-slate-950/90 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 text-center border-2 border-amber-500 shadow-2xl space-y-3">
+      <div class="w-16 h-16 mx-auto rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-3xl font-bold">
         ⚠️
       </div>
-      <h3 class="text-xl font-bold text-slate-900 mb-1">Security Policy Violation</h3>
-      <div class="inline-block px-3 py-1 bg-rose-100 text-rose-800 rounded-full font-bold text-xs uppercase tracking-wider mb-3" id="modalStrikeBadge">
+      <h3 class="text-xl font-bold text-slate-900">Security Policy Warning</h3>
+      <div class="inline-block px-3 py-1 bg-amber-100 text-amber-900 rounded-full font-bold text-xs uppercase tracking-wider" id="modalStrikeBadge">
         Strike 1 of 3
       </div>
-      <p id="modalStrikeReason" class="text-sm text-slate-700 bg-rose-50 border border-rose-200 rounded-xl p-3 mb-4 font-medium leading-relaxed"></p>
-      <p class="text-xs text-slate-500 mb-5 leading-normal">
-        Exiting fullscreen, tab switches, and window focus loss are strictly prohibited. Reaching the strike limit will <strong>automatically submit</strong> your examination immediately.
+      <p id="modalStrikeReason" class="text-sm text-slate-700 bg-amber-50 border border-amber-200 rounded-xl p-3 font-medium leading-relaxed"></p>
+      <p class="text-xs text-slate-500 leading-normal">
+        Exiting fullscreen, tab switches, and window focus loss are strictly prohibited. Reaching the strike limit will <strong>automatically terminate</strong> your examination immediately.
       </p>
-      <button id="btnResumeExam" class="w-full py-3 px-4 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold rounded-xl shadow-lg transition">
+      <button id="btnResumeExam" class="w-full py-3 px-4 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold rounded-xl shadow-lg transition">
         Return to Fullscreen &amp; Resume Examination
       </button>
+    </div>
+  </div>
+
+  <!-- Security Auto-Termination Modal Overlay (Disciplinary Lockdown - strikes >= maxStrikes) -->
+  <div id="autoTerminatedModal" class="fixed inset-0 bg-slate-950/95 z-50 flex items-center justify-center p-4 hidden backdrop-blur-md">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-8 text-center border-2 border-rose-600 shadow-2xl space-y-4">
+      <div class="w-16 h-16 mx-auto rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-3xl font-extrabold shadow-inner">
+        🛑
+      </div>
+      <div>
+        <span id="termStrikeBadge" class="inline-block px-3 py-1 bg-rose-600 text-white text-xs font-bold rounded-full uppercase tracking-wider mb-2">
+          Strike Limit Reached (3/3)
+        </span>
+        <h2 class="text-2xl font-black text-slate-900">Examination Auto-Terminated</h2>
+        <p class="text-xs text-rose-600 font-bold uppercase tracking-wider mt-1">Disciplinary Security Action Enforced</p>
+      </div>
+
+      <div class="bg-rose-50 border border-rose-200 rounded-xl p-4 text-left space-y-2">
+        <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Termination Reason:</p>
+        <p id="termReasonText" class="text-sm font-semibold text-rose-900 leading-relaxed"></p>
+        <div class="border-t border-rose-200/70 pt-2 text-xs text-slate-600">
+          Candidate: <span id="termCandidateName" class="font-bold text-slate-900"></span> · SAP ID: <span id="termSapId" class="mono font-bold text-indigo-700"></span>
+        </div>
+      </div>
+
+      <p class="text-xs text-slate-500 leading-normal">
+        Your examination session has been terminated and automatically submitted. 
+        All answers recorded up to this point have been saved. Your attendance status is recorded as <strong>Present</strong>.
+      </p>
+
+      <div class="pt-2 space-y-2">
+        <button id="btnTermProceedResults" class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+          <span>View Scorecard / Examination Status</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+        </button>
+        <p id="termCountdown" class="text-xs text-slate-400 font-medium">Redirecting to scorecard in 4s...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submission Confirmation Modal -->
+  <div id="submitConfirmModal" class="fixed inset-0 bg-slate-950/80 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
+    <div id="submitConfirmContent" class="bg-white rounded-2xl max-w-md w-full p-6 text-center border border-slate-200 shadow-2xl space-y-4">
+      <div class="w-14 h-14 mx-auto rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-2xl font-black">
+        📋
+      </div>
+      <div>
+        <h3 class="text-xl font-bold text-slate-900">Finalize Examination Submission?</h3>
+        <p class="text-xs text-slate-500 mt-1">Please review your question completion summary before confirming.</p>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-3 gap-2 bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+        <div class="p-2 rounded-lg bg-white border border-slate-100">
+          <div id="subModalAnswered" class="text-lg font-black text-emerald-600">0</div>
+          <div class="text-[10px] uppercase font-bold text-slate-500">Answered</div>
+        </div>
+        <div class="p-2 rounded-lg bg-white border border-slate-100">
+          <div id="subModalUnanswered" class="text-lg font-black text-rose-500">0</div>
+          <div class="text-[10px] uppercase font-bold text-slate-500">Unanswered</div>
+        </div>
+        <div class="p-2 rounded-lg bg-white border border-slate-100">
+          <div id="subModalFlagged" class="text-lg font-black text-amber-500">0</div>
+          <div class="text-[10px] uppercase font-bold text-slate-500">Flagged</div>
+        </div>
+      </div>
+
+      <div id="submitModalError" class="hidden text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 p-2.5 rounded-lg text-left"></div>
+
+      <div class="text-xs text-slate-500 text-left bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-1">
+        <p class="font-bold text-amber-900">Notice:</p>
+        <p class="text-amber-800">Once submitted, you cannot change your choices. Your exam attempt will be finalized and evaluated.</p>
+      </div>
+
+      <div class="flex space-x-3 pt-2">
+        <button id="btnCancelSubmit" type="button" class="flex-1 py-2.5 px-4 rounded-xl border border-slate-300 text-slate-700 font-semibold text-xs hover:bg-slate-50 transition">
+          Return to Exam
+        </button>
+        <button id="btnConfirmSubmit" type="button" class="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-1.5">
+          <span>Yes, Submit Exam</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -97,8 +213,9 @@
         </svg>
         <span id="timerDisplay">--:--</span>
       </div>
-      <button id="btnSubmitExam" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold rounded-lg shadow transition">
-        Submit Exam
+      <button id="btnSubmitExam" type="button" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs sm:text-sm font-semibold rounded-lg shadow transition flex items-center gap-1.5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        <span>Submit Exam</span>
       </button>
     </div>
   </header>
@@ -118,7 +235,7 @@
               <span class="w-2 h-2 rounded-full bg-slate-300"></span>
               <span>Loaded</span>
             </span>
-            <button id="btnFlagReview" class="px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-semibold hover:bg-slate-50 transition text-slate-600">
+            <button id="btnFlagReview" type="button" class="px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-semibold hover:bg-slate-50 transition text-slate-600">
               Mark for Review
             </button>
           </div>
@@ -137,14 +254,14 @@
         <!-- Navigation Action Buttons -->
         <div class="flex items-center justify-between pt-4 border-t border-slate-100">
           <div class="flex space-x-2">
-            <button id="btnPrev" class="px-4 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition">
+            <button id="btnPrev" type="button" class="px-4 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition">
               &larr; Previous
             </button>
-            <button id="btnClear" class="px-3.5 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition">
+            <button id="btnClear" type="button" class="px-3.5 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition">
               Clear Choice
             </button>
           </div>
-          <button id="btnNext" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md transition">
+          <button id="btnNext" type="button" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md transition">
             Save &amp; Next &rarr;
           </button>
         </div>
@@ -185,10 +302,10 @@
     const sapId = sessionStorage.getItem('mq_sap_id') || '000000';
     const email = sessionStorage.getItem('mq_email') || 'student@univ.edu';
     const quizTitle = sessionStorage.getItem('mq_quiz_title') || 'Mathematics Exam';
-    const maxStrikes = parseInt(sessionStorage.getItem('mq_max_strikes') || '3', 10);
+    let maxStrikes = parseInt(sessionStorage.getItem('mq_max_strikes') || '3', 10);
+    if (isNaN(maxStrikes) || maxStrikes < 1) maxStrikes = 3;
 
     if (!token) {
-      alert('Examination session not found. Please log in first.');
       window.location.href = '/mathquiz/student';
     }
 
@@ -200,6 +317,8 @@
     let remainingSeconds = 0;
     let timerInterval = null;
     let isSubmitting = false;
+    let isTerminated = false;
+    let examStarted = false;
 
     // Header info
     document.getElementById('headerQuizTitle').textContent = quizTitle;
@@ -210,6 +329,7 @@
     // Watermark generation
     function updateWatermark() {
       const wm = document.getElementById('watermark');
+      if (!wm) return;
       const text = `${studentName.toUpperCase()} • ${sapId} • ${email} • ${new Date().toLocaleTimeString()}`;
       wm.innerHTML = Array(48).fill(`<span>${text}</span>`).join('');
     }
@@ -225,23 +345,142 @@
       }
     }
 
-    // Fullscreen controller
-    async function enterFullscreen() {
-      try {
-        if (!document.fullscreenElement) {
-          await document.documentElement.requestFullscreen();
-        }
-      } catch (err) {}
+    // Fullscreen state & controller
+    function isFullscreenActive() {
+      return Boolean(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
     }
 
-    // Proctoring & Strike Monitor
+    async function enterFullscreen() {
+      try {
+        const el = document.documentElement;
+        if (!isFullscreenActive()) {
+          if (el.requestFullscreen) {
+            await el.requestFullscreen();
+          } else if (el.webkitRequestFullscreen) {
+            await el.webkitRequestFullscreen();
+          } else if (el.mozRequestFullScreen) {
+            await el.mozRequestFullScreen();
+          } else if (el.msRequestFullscreen) {
+            await el.msRequestFullscreen();
+          }
+        }
+      } catch (err) {
+        console.warn('Fullscreen entry notice:', err);
+      }
+    }
+
+    // Modal button: Start Fullscreen Session
+    const fsEntryModal = document.getElementById('fullscreenEntryModal');
+    const btnStartFullscreen = document.getElementById('btnStartFullscreenExam');
+    if (btnStartFullscreen) {
+      btnStartFullscreen.addEventListener('click', async () => {
+        await enterFullscreen();
+        fsEntryModal.classList.add('hidden');
+        document.getElementById('examWorkspace').classList.remove('blurred');
+        examStarted = true;
+      });
+    }
+
+    // ========================================================================
+    // AUTO-TERMINATION ENGINE (Strict Disciplinary Lockdown)
+    // ========================================================================
+    function terminateExam(reason) {
+      if (isTerminated) return;
+      isTerminated = true;
+      isSubmitting = true;
+      clearInterval(timerInterval);
+
+      // Lock badge at max allowed
+      document.getElementById('badgeStrikes').textContent = `${maxStrikes}/${maxStrikes}`;
+
+      // Hide active modals
+      document.getElementById('strikeModal').classList.add('hidden');
+      document.getElementById('fullscreenEntryModal').classList.add('hidden');
+      document.getElementById('submitConfirmModal').classList.add('hidden');
+
+      // Blur workspace permanently
+      const ws = document.getElementById('examWorkspace');
+      if (ws) ws.classList.add('blurred');
+
+      // Exit fullscreen safely if active
+      if (isFullscreenActive() && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+
+      // Populate termination modal
+      document.getElementById('termStrikeBadge').textContent = `Strike Limit Reached (${maxStrikes}/${maxStrikes})`;
+      document.getElementById('termReasonText').textContent = reason || 'Disciplinary violation threshold exceeded.';
+      document.getElementById('termCandidateName').textContent = studentName;
+      document.getElementById('termSapId').textContent = sapId;
+      document.getElementById('autoTerminatedModal').classList.remove('hidden');
+
+      // Synchronize auto-submission with server in background
+      fetch('/api/mq/submit-attempt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_token: token,
+          auto: true,
+          reason: reason || `Auto-submitted: Reached maximum strikes (${maxStrikes}/${maxStrikes})`
+        })
+      }).catch(() => {});
+
+      // Countdown to automatic redirect
+      let count = 4;
+      const countEl = document.getElementById('termCountdown');
+      const termTimer = setInterval(() => {
+        count--;
+        if (countEl) countEl.textContent = `Redirecting to scorecard in ${count}s...`;
+        if (count <= 0) {
+          clearInterval(termTimer);
+          window.location.href = '/mathquiz/result';
+        }
+      }, 1000);
+    }
+
+    document.getElementById('btnTermProceedResults').addEventListener('click', () => {
+      window.location.href = '/mathquiz/result';
+    });
+
+    // ========================================================================
+    // PROCTORING & STRIKE MONITOR
+    // ========================================================================
     let lastViolationTime = 0;
     async function recordViolation(violationType) {
-      if (isSubmitting || Date.now() - lastViolationTime < 1500) return;
+      if (isSubmitting || isTerminated || !examStarted) return;
+      if (Date.now() - lastViolationTime < 1500) return;
       lastViolationTime = Date.now();
 
       currentStrikes++;
-      document.getElementById('badgeStrikes').textContent = `${currentStrikes}/${maxStrikes}`;
+      const displayStrikes = Math.min(currentStrikes, maxStrikes);
+      document.getElementById('badgeStrikes').textContent = `${displayStrikes}/${maxStrikes}`;
+
+      // IF SPECIFIED VIOLATIONS REACHED/EXCEEDED -> AUTO TERMINATE IMMEDIATELY!
+      if (currentStrikes >= maxStrikes) {
+        terminateExam(`Maximum permitted security violations reached (${maxStrikes}/${maxStrikes}). Last violation: ${violationType}`);
+        // Notify server
+        fetch('/api/mq/record-violation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_token: token,
+            violation_type: violationType,
+            metadata: { timestamp: new Date().toISOString() }
+          })
+        }).catch(() => {});
+        return;
+      }
+
+      // If strikes still under limit, show warning modal
+      document.getElementById('modalStrikeBadge').textContent = `Strike ${currentStrikes} of ${maxStrikes}`;
+      document.getElementById('modalStrikeReason').textContent = `Violation detected: ${violationType}`;
+      document.getElementById('strikeModal').classList.remove('hidden');
+      document.getElementById('examWorkspace').classList.add('blurred');
 
       try {
         const res = await fetch('/api/mq/record-violation', {
@@ -254,43 +493,49 @@
           })
         });
         const json = await res.json();
-
-        if (json.data && json.data.auto_submitted) {
-          alert(`Maximum permitted security violations exceeded (${currentStrikes}/${maxStrikes}). Your examination has been automatically submitted.`);
-          window.location.href = '/mathquiz/result';
-          return;
+        if (json && json.data && json.data.auto_submitted) {
+          terminateExam(`Security policy violation threshold reached (${maxStrikes}/${maxStrikes}).`);
         }
-
-        // Show warning modal
-        document.getElementById('modalStrikeBadge').textContent = `Strike ${currentStrikes} of ${maxStrikes}`;
-        document.getElementById('modalStrikeReason').textContent = `Violation detected: ${violationType}`;
-        document.getElementById('strikeModal').classList.remove('hidden');
-        document.getElementById('examWorkspace').classList.add('blurred');
-
       } catch (e) {}
     }
 
+    // Resume button from Warning Modal (Only works if under strike limit)
     document.getElementById('btnResumeExam').addEventListener('click', async () => {
+      if (currentStrikes >= maxStrikes || isTerminated) {
+        terminateExam(`Maximum permitted security violations reached (${maxStrikes}/${maxStrikes}).`);
+        return;
+      }
       await enterFullscreen();
       document.getElementById('strikeModal').classList.add('hidden');
       document.getElementById('examWorkspace').classList.remove('blurred');
     });
 
-    // Proctoring event listeners
+    // Proctoring event listeners (Active only while test is live)
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) recordViolation('Browser tab switched or minimized');
+      if (examStarted && !isSubmitting && !isTerminated && document.hidden) {
+        recordViolation('Browser tab switched or minimized');
+      }
     });
+
     window.addEventListener('blur', () => {
-      recordViolation('Window focus lost (switched outside examination)');
+      if (examStarted && !isSubmitting && !isTerminated) {
+        recordViolation('Window focus lost (switched outside examination)');
+      }
     });
-    document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement) recordViolation('Exited mandatory fullscreen mode');
+
+    ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => {
+      document.addEventListener(evt, () => {
+        if (examStarted && !isSubmitting && !isTerminated && !isFullscreenActive()) {
+          recordViolation('Exited mandatory fullscreen mode');
+        }
+      });
     });
 
     // Keyboard & Context Menu Restrictions
     ['contextmenu', 'copy', 'cut', 'paste', 'dragstart'].forEach(evt => {
       document.addEventListener(evt, e => e.preventDefault());
     });
+
     window.addEventListener('keydown', (e) => {
       const k = e.key || '';
       const c = e.ctrlKey || e.metaKey;
@@ -307,7 +552,9 @@
       }
     }, true);
 
-    // Timer Countdown
+    // ========================================================================
+    // TIMER ENGINE
+    // ========================================================================
     function startTimer(seconds) {
       remainingSeconds = seconds;
       function tick() {
@@ -318,7 +565,7 @@
 
         if (remainingSeconds <= 0) {
           clearInterval(timerInterval);
-          submitExam(true, 'Examination time expired.');
+          terminateExam('Examination time expired.');
         } else {
           remainingSeconds--;
         }
@@ -327,7 +574,9 @@
       timerInterval = setInterval(tick, 1000);
     }
 
-    // Fetch Question Paper
+    // ========================================================================
+    // FETCH QUESTION PAPER
+    // ========================================================================
     async function loadPaper() {
       try {
         const res = await fetch('/api/mq/get-paper', {
@@ -337,13 +586,28 @@
         });
         const json = await res.json();
         if (!res.ok || !json.success) {
-          alert(json.error || 'Failed to load paper.');
+          if (json.error && (json.error.includes('auto_submitted') || json.error.includes('submitted') || json.error.includes('locked'))) {
+            terminateExam(json.error);
+            return;
+          }
           window.location.href = '/mathquiz/student';
           return;
         }
 
         const paper = json.paper;
-        questions = paper.questions;
+        if (paper.max_violations) {
+          maxStrikes = paper.max_violations;
+        }
+        if (typeof paper.current_strikes === 'number') {
+          currentStrikes = paper.current_strikes;
+          document.getElementById('badgeStrikes').textContent = `${Math.min(currentStrikes, maxStrikes)}/${maxStrikes}`;
+          if (currentStrikes >= maxStrikes) {
+            terminateExam(`Maximum permitted security violations reached (${maxStrikes}/${maxStrikes}).`);
+            return;
+          }
+        }
+
+        questions = paper.questions || [];
         questions.forEach(q => {
           if (q.question_type === 'multiple') {
             if (q.saved_options && q.saved_options.length) {
@@ -355,16 +619,29 @@
         });
 
         startTimer(paper.remaining_seconds);
-        enterFullscreen();
         renderQuestion(0);
         renderPalette();
 
+        // Enforce Mandatory Fullscreen Mode
+        if (isFullscreenActive()) {
+          fsEntryModal.classList.add('hidden');
+          document.getElementById('examWorkspace').classList.remove('blurred');
+          examStarted = true;
+        } else {
+          fsEntryModal.classList.remove('hidden');
+          document.getElementById('examWorkspace').classList.add('blurred');
+          const badgeEl = document.getElementById('fsCandidateBadge');
+          if (badgeEl) badgeEl.textContent = `${studentName} · SAP ID: ${sapId}`;
+        }
+
       } catch (err) {
-        alert('Connection error loading paper.');
+        console.error('Error loading examination:', err);
       }
     }
 
-    // Render Question & Options
+    // ========================================================================
+    // RENDER QUESTION & OPTIONS
+    // ========================================================================
     function renderQuestion(idx) {
       currentIndex = idx;
       const q = questions[idx];
@@ -387,7 +664,7 @@
       if (isMultiple) {
         const hint = document.createElement('div');
         hint.className = 'text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-lg mb-2';
-        hint.innerHTML = '<i class="fa-solid fa-list-check me-1"></i> Multiple-Answer Question: Select all correct options (Exact-match scoring).';
+        hint.innerHTML = 'Multiple-Answer Question: Select all correct options (Exact-match scoring).';
         optBox.appendChild(hint);
       }
 
@@ -400,6 +677,7 @@
         }
 
         const btn = document.createElement('button');
+        btn.type = 'button';
         btn.className = `w-full text-left p-3.5 rounded-xl border-2 transition flex items-center space-x-3 text-sm font-medium ${
           isSelected ? 'border-indigo-600 bg-indigo-50/50 text-indigo-950 font-semibold' : 'border-slate-200 bg-white hover:border-slate-300'
         }`;
@@ -425,6 +703,8 @@
 
     // Save student answer immediately
     async function selectOption(qId, key, isMultiple = false) {
+      if (isTerminated) return;
+
       if (isMultiple) {
         let curr = Array.isArray(answers[qId]) ? [...answers[qId]] : (answers[qId] ? [answers[qId]] : []);
         if (curr.includes(key)) {
@@ -458,12 +738,21 @@
           payload.selected_options = answers[qId] ? [answers[qId]] : [];
         }
 
-        await fetch('/api/mq/save-answer', {
+        const res = await fetch('/api/mq/save-answer', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        statusInd.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-emerald-700">Saved</span>`;
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          if (json.attempt_inactive || (json.error && json.error.includes('not active'))) {
+            terminateExam('Examination attempt is no longer active.');
+            return;
+          }
+          statusInd.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500"></span><span class="text-rose-700">Save failed</span>`;
+        } else {
+          statusInd.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-emerald-700">Saved</span>`;
+        }
       } catch (e) {
         statusInd.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500"></span><span class="text-rose-700">Unsaved (offline)</span>`;
       }
@@ -492,6 +781,7 @@
         const ringClass = isCurrent ? 'ring-2 ring-indigo-600 ring-offset-2 font-extrabold' : '';
 
         const btn = document.createElement('button');
+        btn.type = 'button';
         btn.className = `h-9 rounded-lg border font-bold text-xs transition ${bgClass} ${ringClass}`;
         btn.textContent = i + 1;
         btn.addEventListener('click', () => renderQuestion(i));
@@ -507,14 +797,17 @@
     document.getElementById('btnPrev').addEventListener('click', () => {
       if (currentIndex > 0) renderQuestion(currentIndex - 1);
     });
+
     document.getElementById('btnNext').addEventListener('click', () => {
       if (currentIndex < questions.length - 1) {
         renderQuestion(currentIndex + 1);
       } else {
-        confirmSubmission();
+        openSubmitModal();
       }
     });
+
     document.getElementById('btnClear').addEventListener('click', async () => {
+      if (isTerminated) return;
       const q = questions[currentIndex];
       if (!q) return;
       const qId = q.question_id;
@@ -535,42 +828,121 @@
         });
       } catch (e) {}
     });
+
     document.getElementById('btnFlagReview').addEventListener('click', () => {
+      if (isTerminated) return;
       const qId = questions[currentIndex].question_id;
       flagged[qId] = !flagged[qId];
       renderQuestion(currentIndex);
       renderPalette();
     });
 
-    // Submission handler
-    document.getElementById('btnSubmitExam').addEventListener('click', confirmSubmission);
+    // ========================================================================
+    // EXAMINATION SUBMISSION FLOW (Reliable In-Page Modal, No Native Alert/Confirm)
+    // ========================================================================
+    document.getElementById('btnSubmitExam').addEventListener('click', openSubmitModal);
 
-    function confirmSubmission() {
-      const answered = Object.keys(answers).length;
-      const unans = questions.length - answered;
-      const msg = `Are you sure you want to finalize and submit your examination?\n\n• Answered: ${answered}\n• Unanswered: ${unans}\n\nYou cannot change your answers after submission.`;
-      if (confirm(msg)) {
-        submitExam(false, 'Submitted by student');
-      }
+    function openSubmitModal() {
+      if (isSubmitting || isTerminated) return;
+
+      let answered = 0;
+      questions.forEach(q => {
+        const a = answers[q.question_id];
+        if (Array.isArray(a) ? a.length > 0 : Boolean(a)) answered++;
+      });
+      const total = questions.length;
+      const unanswered = total - answered;
+      const flaggedCount = Object.values(flagged).filter(Boolean).length;
+
+      document.getElementById('subModalAnswered').textContent = answered;
+      document.getElementById('subModalUnanswered').textContent = unanswered;
+      document.getElementById('subModalFlagged').textContent = flaggedCount;
+      document.getElementById('submitModalError').classList.add('hidden');
+
+      document.getElementById('submitConfirmModal').classList.remove('hidden');
     }
 
-    async function submitExam(auto = false, reason = '') {
-      if (isSubmitting) return;
+    document.getElementById('btnCancelSubmit').addEventListener('click', () => {
+      document.getElementById('submitConfirmModal').classList.add('hidden');
+    });
+
+    document.getElementById('btnConfirmSubmit').addEventListener('click', executeSubmission);
+
+    async function executeSubmission() {
+      if (isSubmitting || isTerminated) return;
       isSubmitting = true;
       clearInterval(timerInterval);
+
+      const confirmBtn = document.getElementById('btnConfirmSubmit');
+      const cancelBtn = document.getElementById('btnCancelSubmit');
+      confirmBtn.disabled = true;
+      cancelBtn.disabled = true;
+      confirmBtn.innerHTML = `
+        <svg class="animate-spin -ml-1 mr-1.5 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <span>Submitting Exam...</span>
+      `;
 
       try {
         const res = await fetch('/api/mq/submit-attempt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_token: token, auto, reason })
+          body: JSON.stringify({
+            session_token: token,
+            auto: false,
+            reason: 'Submitted by student'
+          })
         });
         const json = await res.json();
-        alert(auto ? `Examination auto-submitted: ${reason}` : 'Examination submitted successfully! Attendance has been recorded.');
-        window.location.href = '/mathquiz/result';
+
+        if (!res.ok && !(json && json.summary)) {
+          throw new Error(json.error || 'Submission failed. Please try again.');
+        }
+
+        // Show successful completion inside modal
+        const modalContent = document.getElementById('submitConfirmContent');
+        if (modalContent) {
+          modalContent.innerHTML = `
+            <div class="text-center py-4 space-y-4">
+              <div class="w-16 h-16 mx-auto rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl font-extrabold shadow-inner">
+                ✓
+              </div>
+              <div>
+                <h3 class="text-2xl font-black text-slate-900">Examination Submitted!</h3>
+                <p class="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Your examination responses have been finalized and recorded. 
+                  Attendance has been marked as <strong>Present</strong>.
+                </p>
+              </div>
+              <div class="pt-2">
+                <button id="btnProceedToResults" type="button" class="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                  <span>Proceed to Scorecard / Results</span>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                </button>
+              </div>
+            </div>
+          `;
+          document.getElementById('btnProceedToResults').addEventListener('click', () => {
+            window.location.href = '/mathquiz/result';
+          });
+        }
+
+        setTimeout(() => {
+          window.location.href = '/mathquiz/result';
+        }, 1800);
+
       } catch (err) {
-        alert('Submission error. Retrying...');
         isSubmitting = false;
+        confirmBtn.disabled = false;
+        cancelBtn.disabled = false;
+        confirmBtn.innerHTML = `<span>Retry Submission</span>`;
+        const errEl = document.getElementById('submitModalError');
+        if (errEl) {
+          errEl.textContent = err.message || 'Error communicating with submission server.';
+          errEl.classList.remove('hidden');
+        }
       }
     }
 

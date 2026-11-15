@@ -46,7 +46,10 @@
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
     <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
       <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Quizzes</span>
-      <div class="text-2xl font-black text-slate-900 mt-1">{{ quizzes|length }}</div>
+      <div class="text-2xl font-black text-emerald-600 mt-1">
+        {{ active_quizzes_count if active_quizzes_count is defined else quizzes|selectattr('status', 'equalto', 'active')|list|length }}
+        <span class="text-xs font-semibold text-slate-400">/ {{ quizzes|length }}</span>
+      </div>
     </div>
     <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
       <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Question Bank</span>
@@ -68,10 +71,13 @@
       Examinations &amp; Releases
     </button>
     <button class="admin-tab pb-3 text-sm font-semibold text-slate-500 hover:text-slate-800" data-tab="questions">
-      LaTeX Question Editor
+      <i class="fa-solid fa-book-open me-1"></i> Question Bank Repository ({{ total_questions }})
     </button>
     <button class="admin-tab pb-3 text-sm font-semibold text-slate-500 hover:text-slate-800" data-tab="templates">
       Download Template Centre
+    </button>
+    <button class="admin-tab pb-3 text-sm font-semibold text-slate-500 hover:text-slate-800" data-tab="students">
+      <i class="fa-solid fa-users me-1"></i> Student Registration &amp; Roster
     </button>
   </div>
 
@@ -90,6 +96,7 @@
               <th class="px-4 py-3">Code</th>
               <th class="px-4 py-3">Duration</th>
               <th class="px-4 py-3">Distribution Mode</th>
+              <th class="px-4 py-3">Conduct Status</th>
               <th class="px-4 py-3">Result Release Status</th>
               <th class="px-6 py-3 text-right">Actions</th>
             </tr>
@@ -110,6 +117,19 @@
                   </span>
                 </td>
                 <td class="px-4 py-4">
+                  {% if q.status == 'active' %}
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      Active (Open)
+                    </span>
+                  {% else %}
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                      <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                      Deactivated (Closed)
+                    </span>
+                  {% endif %}
+                </td>
+                <td class="px-4 py-4">
                   {% if q.result_release_status == 'published' %}
                     <span class="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
                       Published
@@ -121,12 +141,22 @@
                   {% endif %}
                 </td>
                 <td class="px-6 py-4 text-right space-x-2">
+                  {% if q.status == 'active' %}
+                    <button class="btn-toggle-quiz-status px-3 py-1.5 rounded-lg border border-rose-300 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-xs font-bold text-rose-700 transition" data-id="{{ q.id }}" data-status="deactive" title="Deactivate examination to prevent student conduction">
+                      <i class="fa-solid fa-power-off me-1"></i> Deactivate
+                    </button>
+                  {% else %}
+                    <button class="btn-toggle-quiz-status px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-xs font-bold text-white shadow-sm transition" data-id="{{ q.id }}" data-status="active" title="Activate examination so students can conduct it">
+                      <i class="fa-solid fa-play me-1"></i> Activate
+                    </button>
+                  {% endif %}
+
                   {% if q.result_release_status == 'published' %}
                     <button class="btn-toggle-pub px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100" data-id="{{ q.id }}" data-pub="0">
                       Hide Results
                     </button>
                   {% else %}
-                    <button class="btn-toggle-pub px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white shadow-sm" data-id="{{ q.id }}" data-pub="1">
+                    <button class="btn-toggle-pub px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white shadow-sm" data-id="{{ q.id }}" data-pub="1">
                       Publish Results
                     </button>
                   {% endif %}
@@ -138,7 +168,7 @@
               {% endfor %}
             {% else %}
               <tr>
-                <td colspan="6" class="px-6 py-8 text-center text-slate-400">
+                <td colspan="7" class="px-6 py-8 text-center text-slate-400">
                   No examinations created yet. Click "+ Create New Examination" to start.
                 </td>
               </tr>
@@ -149,9 +179,158 @@
     </div>
   </div>
 
-  <!-- TAB 2: LaTeX Question Editor -->
+  <!-- TAB 2: Question Bank Repository & LaTeX Question Editor -->
   <div id="tabContent-questions" class="tab-pane hidden space-y-6">
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- QUESTION BANK BROWSER & REPOSITORY -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100">
+        <div>
+          <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-layer-group text-indigo-600"></i> Question Bank Repository
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800" id="qbTotalBadge">{{ total_questions }} Questions</span>
+          </h3>
+          <p class="text-xs text-slate-500 mt-1">Browse, filter, and review mathematical question formulations, MCQ options, and correct answer keys.</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button type="button" id="btnToggleAuthoring" class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-100 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-pen-fancy"></i>
+            <span>+ Author New Question (LaTeX)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filters & Search Toolbar -->
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+        <!-- Search Input -->
+        <div class="relative">
+          <input type="text" id="qbSearchInput" placeholder="Search LaTeX formula or text..." 
+            class="w-full px-3 py-2 pl-8 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+          <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+        </div>
+        <!-- Subject Filter -->
+        <div class="flex items-center gap-1.5">
+          <select id="qbSubjectFilter" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white font-medium text-slate-700">
+            <option value="">All Subjects (All Courses)</option>
+            {% for s in subjects %}
+              <option value="{{ s.id }}">{{ s.subject_code }} - {{ s.subject_name }}</option>
+            {% endfor %}
+            <option value="__NEW_SUBJECT__">+ Provide / Add New Subject...</option>
+          </select>
+          <button type="button" onclick="openNewSubjectModal('qbSubjectFilter')" class="px-2 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition flex items-center justify-center shrink-0" title="Add New Academic Course / Subject">
+            <i class="fa-solid fa-plus text-[11px]"></i>
+          </button>
+        </div>
+        <!-- Topic Filter -->
+        <div>
+          <select id="qbTopicFilter" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white font-medium text-slate-700">
+            <option value="">All Topics ({{ total_questions }})</option>
+            {% for t in topics %}
+              <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <!-- Difficulty Filter -->
+        <div>
+          <select id="qbDiffFilter" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white font-medium text-slate-700">
+            <option value="">All Difficulties</option>
+            <option value="Easy">Easy</option>
+            <option value="Medium">Medium</option>
+            <option value="Hard">Hard</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Question Cards List -->
+      <div id="qbQuestionsList" class="space-y-4 max-h-[750px] overflow-y-auto pr-1">
+        {% for q in questions %}
+          <div class="qb-question-card border border-slate-200 rounded-xl p-5 bg-white hover:border-indigo-300 transition shadow-sm space-y-3"
+               data-subject="{{ q.subject_id or '' }}"
+               data-topic="{{ (q.topic or '')|lower }}"
+               data-difficulty="{{ (q.difficulty or '')|lower }}"
+               data-text="{{ (q.latex_source or '')|lower }}">
+            <!-- Card Header -->
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+              <div class="flex items-center space-x-2">
+                <span class="w-6 h-6 rounded-lg bg-slate-900 text-white text-[11px] font-bold flex items-center justify-center">
+                  {{ loop.index }}
+                </span>
+                {% if q.subject %}
+                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200" title="{{ q.subject.subject_name }}">
+                    {{ q.subject.subject_code }}
+                  </span>
+                {% elif q.subject_id %}
+                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                    Subj #{{ q.subject_id }}
+                  </span>
+                {% endif %}
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                  {{ q.topic or 'General' }}
+                </span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold 
+                  {% if q.difficulty == 'Easy' %}bg-emerald-50 text-emerald-700 border border-emerald-200
+                  {% elif q.difficulty == 'Hard' %}bg-rose-50 text-rose-700 border border-rose-200
+                  {% else %}bg-amber-50 text-amber-700 border border-amber-200{% endif %}">
+                  {{ q.difficulty or 'Medium' }}
+                </span>
+              </div>
+              <div class="flex items-center space-x-2 text-xs font-semibold text-slate-600">
+                <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-800 text-[11px]">Marks: {{ q.marks }}</span>
+                {% if q.negative_marks and q.negative_marks > 0 %}
+                  <span class="px-2 py-0.5 rounded bg-rose-50 text-rose-700 text-[11px]">Neg: -{{ q.negative_marks }}</span>
+                {% endif %}
+                <span class="text-[10px] text-slate-400 font-mono">{{ q.id|string|truncate(8, True, '') }}</span>
+              </div>
+            </div>
+
+            <!-- Question LaTeX Body -->
+            <div class="text-sm font-medium text-slate-900 py-1 qb-math-text leading-relaxed">
+              {{ q.latex_source }}
+            </div>
+
+            <!-- Options Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              {% for opt in q.options %}
+                <div class="p-2.5 rounded-xl border text-xs flex items-center justify-between gap-2
+                  {% if opt.is_correct %}
+                    bg-emerald-50/70 border-emerald-300 text-emerald-950 font-semibold shadow-xs
+                  {% else %}
+                    bg-slate-50/60 border-slate-200 text-slate-800
+                  {% endif %}">
+                  <div class="flex items-center gap-2">
+                    <span class="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px]
+                      {% if opt.is_correct %}bg-emerald-600 text-white{% else %}bg-slate-200 text-slate-700{% endif %}">
+                      {{ opt.option_key }}
+                    </span>
+                    <span class="qb-math-text">{{ opt.latex_source }}</span>
+                  </div>
+                  {% if opt.is_correct %}
+                    <span class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider whitespace-nowrap">
+                      ✓ Correct Key
+                    </span>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+
+            <!-- Explanation / Solution -->
+            {% if q.explanation %}
+              <div class="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl text-xs text-indigo-950">
+                <span class="font-bold text-indigo-800">Explanation / Solution:</span>
+                <span class="qb-math-text ml-1">{{ q.explanation }}</span>
+              </div>
+            {% endif %}
+          </div>
+        {% else %}
+          <div class="p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+            No questions found in repository.
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- AUTHORING STUDIO (COLLAPSIBLE) -->
+    <div id="authoringStudioSection" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Question Form -->
       <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         <h3 class="text-base font-bold text-slate-900">LaTeX Question Editor</h3>
@@ -217,10 +396,45 @@
           </div>
         </div>
 
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-bold text-slate-700 uppercase">Subject</label>
+              <button type="button" onclick="openNewSubjectModal('edSubjectId')" class="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">+ New</button>
+            </div>
+            <select id="edSubjectId" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white font-medium">
+              <option value="">-- General Bank --</option>
+              {% for s in subjects %}
+                <option value="{{ s.id }}">{{ s.subject_code }} - {{ s.subject_name }}</option>
+              {% endfor %}
+              <option value="__NEW_SUBJECT__">+ Provide / Add New Subject...</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Topic</label>
+            <input type="text" id="edTopic" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" placeholder="e.g. Calculus, Matrix">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Difficulty</label>
+            <select id="edDiff" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white font-medium">
+              <option value="Easy">Easy</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="Hard">Hard</option>
+            </select>
+          </div>
+        </div>
+
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Solution / Explanation</label>
           <input type="text" id="edExpl" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" placeholder="Power rule: [x^3 / 3] from 0 to 1 = 1/3.">
         </div>
+
+        <div id="authorFeedback" class="hidden p-3 rounded-xl text-xs font-medium"></div>
+
+        <button type="button" id="btnSaveAuthorQuestion" class="w-full py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-100 flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-floppy-disk"></i>
+          <span>Save Question to Bank</span>
+        </button>
       </div>
 
       <!-- Live Preview -->
@@ -249,7 +463,37 @@
   <div id="tabContent-templates" class="tab-pane hidden space-y-6">
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
       <h3 class="text-lg font-bold text-slate-900 mb-1">15 Downloadable Question Templates</h3>
-      <p class="text-xs text-slate-500 mb-6">Download distribution-specific templates with pre-formatted mathematical LaTeX notation, options, and metadata.</p>
+      <p class="text-xs text-slate-500 mb-5">Download distribution-specific templates with pre-formatted mathematical LaTeX notation, options, and metadata.</p>
+
+      <!-- Subject Selection for Templates -->
+      <div class="mb-6 p-5 bg-gradient-to-r from-indigo-50/90 to-blue-50/70 border border-indigo-200 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
+        <div class="space-y-1">
+          <label class="block text-xs font-extrabold text-indigo-950 uppercase tracking-wide flex items-center gap-2">
+            <i class="fa-solid fa-graduation-cap text-indigo-600 text-sm"></i>
+            Select Subject for Question Templates
+          </label>
+          <p class="text-xs text-indigo-700">Questions authored using these templates will automatically be cataloged under the selected subject in the Question Bank upon upload.</p>
+        </div>
+        <div class="min-w-[340px] md:w-[480px]">
+          <div class="flex items-center gap-2">
+            <select id="tplSubjectSelect" class="flex-1 px-4 py-2.5 bg-white border border-indigo-300 rounded-xl text-xs font-bold text-indigo-950 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm cursor-pointer">
+              <option value="">-- General Question Bank (All Subjects) --</option>
+              {% for s in subjects %}
+                <option value="{{ s.subject_code }}" data-id="{{ s.id }}">{{ s.subject_code }} - {{ s.subject_name }}</option>
+              {% endfor %}
+              <option value="__NEW_SUBJECT__" class="font-extrabold text-indigo-600 bg-indigo-50/80">✨ + Provide / Add New Subject...</option>
+            </select>
+            <button type="button" onclick="openNewSubjectModal('tplSubjectSelect')" class="px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-100 transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+              <i class="fa-solid fa-plus-circle text-indigo-200"></i>
+              <span>+ New Subject</span>
+            </button>
+          </div>
+          <div id="tplSubjectBadge" class="mt-2 text-[11px] font-semibold text-indigo-900 hidden flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-check text-emerald-600"></i>
+            <span id="tplSubjectBadgeText">Templates linked to subject</span>
+          </div>
+        </div>
+      </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Random Pool Card -->
@@ -258,11 +502,11 @@
           <h4 class="font-bold text-slate-900">Random Pool Templates</h4>
           <p class="text-xs text-slate-600">Draws random questions per topic quota. Includes pool IDs and difficulty quotas.</p>
           <div class="flex flex-wrap gap-2 pt-2">
-            <a href="/mathquiz/templates/download/random-pool/xlsx" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm">Excel (.xlsx)</a>
-            <a href="/mathquiz/templates/download/random-pool/tex" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm">LaTeX (.tex)</a>
-            <a href="/mathquiz/templates/download/random-pool/docx" class="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm">Word (.docx)</a>
-            <a href="/mathquiz/templates/download/random-pool/csv" class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">CSV (.csv)</a>
-            <a href="/mathquiz/templates/download/random-pool/json" class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">JSON (.json)</a>
+            <a href="/mathquiz/templates/download/random-pool/xlsx" class="tpl-download-link px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm">Excel (.xlsx)</a>
+            <a href="/mathquiz/templates/download/random-pool/tex" class="tpl-download-link px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm">LaTeX (.tex)</a>
+            <a href="/mathquiz/templates/download/random-pool/docx" class="tpl-download-link px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm">Word (.docx)</a>
+            <a href="/mathquiz/templates/download/random-pool/csv" class="tpl-download-link px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">CSV (.csv)</a>
+            <a href="/mathquiz/templates/download/random-pool/json" class="tpl-download-link px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">JSON (.json)</a>
           </div>
         </div>
 
@@ -272,11 +516,11 @@
           <h4 class="font-bold text-slate-900">Round-Robin Templates</h4>
           <p class="text-xs text-slate-600">Cyclic allocation for balanced question sets (Set A, B, C, D) and individual offsets.</p>
           <div class="flex flex-wrap gap-2 pt-2">
-            <a href="/mathquiz/templates/download/round-robin/xlsx" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm">Excel (.xlsx)</a>
-            <a href="/mathquiz/templates/download/round-robin/tex" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm">LaTeX (.tex)</a>
-            <a href="/mathquiz/templates/download/round-robin/docx" class="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm">Word (.docx)</a>
-            <a href="/mathquiz/templates/download/round-robin/csv" class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">CSV (.csv)</a>
-            <a href="/mathquiz/templates/download/round-robin/json" class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">JSON (.json)</a>
+            <a href="/mathquiz/templates/download/round-robin/xlsx" class="tpl-download-link px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm">Excel (.xlsx)</a>
+            <a href="/mathquiz/templates/download/round-robin/tex" class="tpl-download-link px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm">LaTeX (.tex)</a>
+            <a href="/mathquiz/templates/download/round-robin/docx" class="tpl-download-link px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm">Word (.docx)</a>
+            <a href="/mathquiz/templates/download/round-robin/csv" class="tpl-download-link px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">CSV (.csv)</a>
+            <a href="/mathquiz/templates/download/round-robin/json" class="tpl-download-link px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">JSON (.json)</a>
           </div>
         </div>
 
@@ -286,11 +530,11 @@
           <h4 class="font-bold text-slate-900">All Questions Templates</h4>
           <p class="text-xs text-slate-600">Standard assessment where every candidate answers all questions in bank.</p>
           <div class="flex flex-wrap gap-2 pt-2">
-            <a href="/mathquiz/templates/download/all-questions/xlsx" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm">Excel (.xlsx)</a>
-            <a href="/mathquiz/templates/download/all-questions/tex" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm">LaTeX (.tex)</a>
-            <a href="/mathquiz/templates/download/all-questions/docx" class="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm">Word (.docx)</a>
-            <a href="/mathquiz/templates/download/all-questions/csv" class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">CSV (.csv)</a>
-            <a href="/mathquiz/templates/download/all-questions/json" class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">JSON (.json)</a>
+            <a href="/mathquiz/templates/download/all-questions/xlsx" class="tpl-download-link px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm">Excel (.xlsx)</a>
+            <a href="/mathquiz/templates/download/all-questions/tex" class="tpl-download-link px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm">LaTeX (.tex)</a>
+            <a href="/mathquiz/templates/download/all-questions/docx" class="tpl-download-link px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm">Word (.docx)</a>
+            <a href="/mathquiz/templates/download/all-questions/csv" class="tpl-download-link px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">CSV (.csv)</a>
+            <a href="/mathquiz/templates/download/all-questions/json" class="tpl-download-link px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold">JSON (.json)</a>
           </div>
         </div>
       </div>
@@ -301,10 +545,169 @@
           <h4 class="font-bold text-sm text-indigo-950">Student Cohort Registration Template</h4>
           <p class="text-xs text-indigo-700">Pre-formatted roster spreadsheet for bulk enrolling students with SAP IDs, emails, and sections.</p>
         </div>
-        <a href="/mathquiz/templates/download/general/xlsx" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm">
+        <a href="/mathquiz/templates/download/general/xlsx" class="tpl-download-link px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm">
           Download Roster (.xlsx)
         </a>
       </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: Student Registration & Roster (MQ-02) -->
+  <div id="tabContent-students" class="tab-pane hidden space-y-4">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100">
+        <div>
+          <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-users text-indigo-600"></i> Institutional Student Roster &amp; Verification Master
+          </h3>
+          <p class="text-xs text-slate-500 mt-1">Register institutional candidates. During exam entrance, Candidate Name, SAP ID, and Email must strictly match these records.</p>
+        </div>
+        <div class="flex items-center space-x-3">
+          <button id="btnOpenSingleStudentModal" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 shadow-sm transition">
+            + Register Single Student
+          </button>
+          <button id="btnOpenImportStudentModal" class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-100 transition">
+            <i class="fa-solid fa-file-excel me-1"></i> Bulk Upload Roster (.xlsx / .csv)
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Filter -->
+      <div class="flex items-center justify-between gap-4">
+        <div class="relative w-full max-w-md">
+          <input type="text" id="studentSearchInput" placeholder="Search by SAP ID, Student Name, or Email..." 
+            class="w-full px-3.5 py-2 pl-9 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+        </div>
+        <span class="text-xs text-slate-500 font-medium">Showing {{ students|length }} of {{ total_students }} registered students</span>
+      </div>
+
+      <!-- Students Table -->
+      <div class="overflow-x-auto rounded-xl border border-slate-100">
+        <table class="w-full text-left text-xs" id="studentsTable">
+          <thead class="bg-slate-50 text-slate-400 uppercase font-bold tracking-wider text-[10px]">
+            <tr>
+              <th class="px-4 py-3">SAP ID / Roll No</th>
+              <th class="px-4 py-3">Student Name</th>
+              <th class="px-4 py-3">Registered Institutional Email</th>
+              <th class="px-4 py-3">Enrollment Status</th>
+              <th class="px-4 py-3 text-right">Registration Date</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 text-slate-700">
+            {% for s in students %}
+              <tr class="hover:bg-slate-50/80 transition student-row">
+                <td class="px-4 py-3 font-mono font-bold text-indigo-700 sap-cell">{{ s.register_number }}</td>
+                <td class="px-4 py-3 font-semibold text-slate-900 name-cell">{{ s.student_name }}</td>
+                <td class="px-4 py-3 email-cell text-slate-600">{{ s.email or '—' }}</td>
+                <td class="px-4 py-3">
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                    {{ s.status }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-right text-slate-400">
+                  {{ s.created_at.strftime('%Y-%m-%d') if s.created_at else 'Active' }}
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="5" class="px-4 py-8 text-center text-slate-400">
+                  No students registered yet. Click <strong>+ Register Single Student</strong> or <strong>Bulk Upload Roster</strong> to enroll candidates.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Register Single Student -->
+  <div id="modalSingleStudent" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-user-plus text-indigo-600"></i> Register Institutional Student
+        </h3>
+        <button id="btnCloseSingleStudentModal" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+      </div>
+
+      <form id="formSingleStudent" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">SAP ID / Roll No <span class="text-rose-500">*</span></label>
+          <input type="text" id="regSapId" required placeholder="e.g. 70572600101 or 2026CE011" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-mono uppercase">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Student Full Name <span class="text-rose-500">*</span></label>
+          <input type="text" id="regName" required placeholder="e.g. Aarav Sharma" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Registered Institutional Email <span class="text-rose-500">*</span></label>
+          <input type="email" id="regEmail" required placeholder="e.g. student@univ.edu" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Assign to Examination (Optional)</label>
+          <select id="regQuizId" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs">
+            <option value="">-- All Active Examinations (Global) --</option>
+            {% for q in quizzes %}
+              <option value="{{ q.id }}">{{ q.title }} ({{ q.quiz_code }}){% if q.status != 'active' %} [Deactivated]{% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div id="singleStudentFeedback" class="hidden p-3 rounded-xl text-xs font-medium"></div>
+
+        <div class="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+          <button type="button" id="btnCancelSingleStudent" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Cancel</button>
+          <button type="submit" id="btnSubmitSingleStudent" class="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-100">
+            Register Student
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Bulk Upload Student Roster -->
+  <div id="modalImportStudent" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-file-excel text-emerald-600"></i> Bulk Upload Student Roster
+        </h3>
+        <button id="btnCloseImportStudentModal" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+      </div>
+
+      <form id="formImportStudent" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Select Examination Cohort (Optional)</label>
+          <select id="impQuizId" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs">
+            <option value="">-- Global Registration (All Active Quizzes) --</option>
+            {% for q in quizzes %}
+              <option value="{{ q.id }}">{{ q.title }} ({{ q.quiz_code }}){% if q.status != 'active' %} [Deactivated]{% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Upload Spreadsheet (.xlsx or .csv)</label>
+          <input type="file" id="studentRosterFile" accept=".xlsx,.csv" required class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+          <p class="text-[11px] text-slate-500 mt-1">Expected columns: <code>sap_id</code>, <code>student_name</code>, <code>email</code></p>
+        </div>
+
+        <div class="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl flex items-center justify-between text-xs text-indigo-900">
+          <span>Need the official template?</span>
+          <a href="/mathquiz/templates/download/general/xlsx" class="font-bold underline text-indigo-700">Download .xlsx</a>
+        </div>
+
+        <div id="importStudentFeedback" class="hidden p-3 rounded-xl text-xs font-medium"></div>
+
+        <div class="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+          <button type="button" id="btnCancelImportStudent" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Cancel</button>
+          <button type="submit" id="btnSubmitImportStudent" class="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 flex items-center gap-1.5">
+            <span>Upload &amp; Enroll Roster</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
   <!-- MODAL: Bulk Upload Questions -->
@@ -323,9 +726,24 @@
           <select id="upQuizId" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm">
             <option value="">-- General Question Bank --</option>
             {% for q in quizzes %}
-              <option value="{{ q.id }}">{{ q.title }} ({{ q.quiz_code }})</option>
+              <option value="{{ q.id }}" data-subject="{{ q.subject_id or '' }}">{{ q.title }} ({{ q.quiz_code }}){% if q.status != 'active' %} [Deactivated]{% endif %}</option>
             {% endfor %}
           </select>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-bold text-slate-700 uppercase">Subject (Academic Course)</label>
+            <button type="button" onclick="openNewSubjectModal('upSubjectId')" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">+ New Subject</button>
+          </div>
+          <select id="upSubjectId" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm">
+            <option value="">-- General Question Bank (or auto-detected) --</option>
+            {% for s in subjects %}
+              <option value="{{ s.id }}">{{ s.subject_code }} - {{ s.subject_name }}</option>
+            {% endfor %}
+            <option value="__NEW_SUBJECT__">+ Provide / Add New Subject...</option>
+          </select>
+          <p class="text-[11px] text-slate-500 mt-1">Assigns all uploaded questions to this subject so examinations configured for this course draw these questions.</p>
         </div>
 
         <div>
@@ -367,11 +785,15 @@
             <input type="text" id="nqCode" required class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-mono uppercase" placeholder="e.g. MATH2026">
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Subject</label>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-bold text-slate-700 uppercase">Subject</label>
+              <button type="button" onclick="openNewSubjectModal('nqSubject')" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">+ New Subject</button>
+            </div>
             <select id="nqSubject" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm">
               {% for s in subjects %}
                 <option value="{{ s.id }}">{{ s.subject_code }} - {{ s.subject_name }}</option>
               {% endfor %}
+              <option value="__NEW_SUBJECT__">+ Provide / Add New Subject...</option>
             </select>
           </div>
         </div>
@@ -426,6 +848,41 @@
       </form>
     </div>
   </div>
+  <!-- MODAL: Add / Register New Academic Subject -->
+  <div id="modalNewSubject" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-graduation-cap text-indigo-600"></i> Add New Academic Subject
+        </h3>
+        <button type="button" id="btnCloseNewSubjectModal" class="text-slate-400 hover:text-slate-600 text-xl font-bold leading-none">&times;</button>
+      </div>
+
+      <form id="formNewSubject" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Subject Code <span class="text-rose-500">*</span></label>
+          <input type="text" id="nsSubjectCode" required placeholder="e.g. AI601, MFCS201, CS302" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-mono uppercase focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          <p class="text-[11px] text-slate-400 mt-1">Short standardized course code (e.g. MFCS101, DS202, CS501).</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Subject Name <span class="text-rose-500">*</span></label>
+          <input type="text" id="nsSubjectName" required placeholder="e.g. Mathematical Foundations of Computer Science" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          <p class="text-[11px] text-slate-400 mt-1">Full official descriptive title of the academic course.</p>
+        </div>
+
+        <div id="newSubjectFeedback" class="hidden p-3 rounded-xl text-xs font-semibold"></div>
+
+        <div class="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+          <button type="button" id="btnCancelNewSubject" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+          <button type="submit" id="btnSubmitNewSubject" class="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white shadow-md shadow-indigo-100 flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-check"></i>
+            <span>Register & Use Subject</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -440,7 +897,168 @@
       tab.classList.remove('text-slate-500');
 
       document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
-      document.getElementById('tabContent-' + tab.dataset.tab).classList.remove('hidden');
+      const activePane = document.getElementById('tabContent-' + tab.dataset.tab);
+      if (activePane) {
+        activePane.classList.remove('hidden');
+        if (tab.dataset.tab === 'questions' && window.MathJax && MathJax.typesetPromise) {
+          MathJax.typesetPromise([activePane]).catch(() => {});
+        }
+      }
+    });
+  });
+
+  // Question Bank live filtering & authoring toggle
+  const qbSearch = document.getElementById('qbSearchInput');
+  const qbSubject = document.getElementById('qbSubjectFilter');
+  const qbTopic = document.getElementById('qbTopicFilter');
+  const qbDiff = document.getElementById('qbDiffFilter');
+  const qbBadge = document.getElementById('qbTotalBadge');
+
+  function filterQuestions() {
+    const sTerm = (qbSearch?.value || '').toLowerCase().trim();
+    const subTerm = (qbSubject?.value || '').trim();
+    const tTerm = (qbTopic?.value || '').toLowerCase().trim();
+    const dTerm = (qbDiff?.value || '').toLowerCase().trim();
+
+    let visibleCount = 0;
+    document.querySelectorAll('.qb-question-card').forEach(card => {
+      const cSubject = card.dataset.subject || '';
+      const cTopic = card.dataset.topic || '';
+      const cDiff = card.dataset.difficulty || '';
+      const cText = card.dataset.text || '';
+
+      const matchSearch = !sTerm || cText.includes(sTerm) || cTopic.includes(sTerm);
+      const matchSubject = !subTerm || cSubject === subTerm;
+      const matchTopic = !tTerm || cTopic === tTerm;
+      const matchDiff = !dTerm || cDiff === dTerm;
+
+      if (matchSearch && matchSubject && matchTopic && matchDiff) {
+        card.style.display = '';
+        visibleCount++;
+      } else {
+        card.style.display = 'none';
+      }
+    });
+    if (qbBadge) qbBadge.textContent = `${visibleCount} Questions`;
+  }
+
+  if (qbSearch) qbSearch.addEventListener('input', filterQuestions);
+  if (qbSubject) qbSubject.addEventListener('change', filterQuestions);
+  if (qbTopic) qbTopic.addEventListener('change', filterQuestions);
+  if (qbDiff) qbDiff.addEventListener('change', filterQuestions);
+
+  const btnToggleAuth = document.getElementById('btnToggleAuthoring');
+  const authSection = document.getElementById('authoringStudioSection');
+  if (btnToggleAuth && authSection) {
+    btnToggleAuth.addEventListener('click', () => {
+      authSection.classList.toggle('hidden');
+      if (!authSection.classList.contains('hidden')) {
+        authSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  }
+
+  // Authoring Studio: Save single question to question bank
+  const btnSaveAuthQ = document.getElementById('btnSaveAuthorQuestion');
+  if (btnSaveAuthQ) {
+    btnSaveAuthQ.addEventListener('click', async () => {
+      const qText = (document.getElementById('edQText').value || '').trim();
+      const optA = (document.getElementById('edOptA').value || '').trim();
+      const optB = (document.getElementById('edOptB').value || '').trim();
+      const optC = (document.getElementById('edOptC').value || '').trim();
+      const optD = (document.getElementById('edOptD').value || '').trim();
+      const corr = document.getElementById('edCorrect').value;
+      const subjId = document.getElementById('edSubjectId').value;
+      const topic = (document.getElementById('edTopic').value || '').trim();
+      const diff = document.getElementById('edDiff').value;
+      const marks = parseFloat(document.getElementById('edMarks').value || 1.0);
+      const negMarks = parseFloat(document.getElementById('edNegMarks').value || 0.0);
+      const expl = (document.getElementById('edExpl').value || '').trim();
+      const fb = document.getElementById('authorFeedback');
+
+      if (!qText || !optA || !optB || !optC || !optD) {
+        fb.className = 'p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 block';
+        fb.textContent = 'Please provide question text and all four options.';
+        return;
+      }
+
+      fb.className = 'p-3 rounded-xl text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 block';
+      fb.textContent = 'Saving question to bank...';
+      btnSaveAuthQ.disabled = true;
+
+      try {
+        const res = await fetch('/api/mq/create-question', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            latex_source: qText,
+            subject_id: subjId ? parseInt(subjId) : null,
+            topic: topic || 'General',
+            difficulty: diff,
+            marks: marks,
+            negative_marks: negMarks,
+            explanation: expl,
+            options: [
+              { key: 'A', text: optA, is_correct: corr === 'A' },
+              { key: 'B', text: optB, is_correct: corr === 'B' },
+              { key: 'C', text: optC, is_correct: corr === 'C' },
+              { key: 'D', text: optD, is_correct: corr === 'D' }
+            ]
+          })
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          fb.className = 'p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 block';
+          fb.textContent = 'Error: ' + (json.error || 'Failed to save question.');
+        } else {
+          fb.className = 'p-3 rounded-xl text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 block';
+          fb.textContent = 'Question saved successfully! Reloading...';
+          setTimeout(() => window.location.reload(), 1200);
+        }
+      } catch (e) {
+        fb.className = 'p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 block';
+        fb.textContent = 'Network error saving question.';
+      } finally {
+        btnSaveAuthQ.disabled = false;
+      }
+    });
+  }
+
+  // Quiz Active / Deactive status toggle (Conduction control)
+  document.querySelectorAll('.btn-toggle-quiz-status').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const qId = btn.dataset.id;
+      const targetStatus = btn.dataset.status;
+      const isActivating = (targetStatus === 'active');
+      const confirmMsg = isActivating
+        ? `Are you sure you want to ACTIVATE this examination?\n\nActive means the examination CAN be conducted for students (candidates will be permitted to verify credentials, launch fullscreen, and submit).`
+        : `Are you sure you want to DEACTIVATE this examination?\n\nDeactivated examinations CANNOT be conducted for students (candidates will be blocked from starting or accessing this exam).`;
+
+      if (!confirm(confirmMsg)) return;
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> Updating...`;
+
+      try {
+        const res = await fetch('/api/mq/toggle-quiz-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quiz_id: qId, status: targetStatus })
+        });
+        const json = await res.json();
+        if (res.ok && json.success) {
+          alert(json.message || `Examination status changed to ${targetStatus}.`);
+          window.location.reload();
+        } else {
+          alert(json.error || 'Failed to update examination status.');
+          btn.disabled = false;
+          btn.innerHTML = isActivating ? '<i class="fa-solid fa-play me-1"></i> Activate' : '<i class="fa-solid fa-power-off me-1"></i> Deactivate';
+        }
+      } catch (e) {
+        alert('Network error updating examination status.');
+        btn.disabled = false;
+        btn.innerHTML = isActivating ? '<i class="fa-solid fa-play me-1"></i> Activate' : '<i class="fa-solid fa-power-off me-1"></i> Deactivate';
+      }
     });
   });
 
@@ -496,6 +1114,214 @@
     modalUpload.classList.add('hidden');
   });
 
+  // Auto-sync Subject selection when a Target Examination is chosen in Bulk Upload
+  const upQuizSelect = document.getElementById('upQuizId');
+  if (upQuizSelect) {
+    upQuizSelect.addEventListener('change', () => {
+      const opt = upQuizSelect.options[upQuizSelect.selectedIndex];
+      const sId = opt?.dataset?.subject;
+      if (sId) {
+        document.getElementById('upSubjectId').value = sId;
+      }
+    });
+  }
+
+  // ============================================================================
+  // New Subject Registration & Dynamic Sync Across All Modules
+  // ============================================================================
+  let activeSubjectTargetId = 'tplSubjectSelect';
+  const prevSelectValues = {};
+
+  window.openNewSubjectModal = function(targetSelectId = null) {
+    if (targetSelectId) {
+      activeSubjectTargetId = targetSelectId;
+      const el = document.getElementById(targetSelectId);
+      if (el) prevSelectValues[targetSelectId] = el.dataset.prevVal || el.value;
+    } else {
+      activeSubjectTargetId = 'tplSubjectSelect';
+    }
+
+    const modal = document.getElementById('modalNewSubject');
+    const fb = document.getElementById('newSubjectFeedback');
+    fb.className = 'hidden';
+    fb.textContent = '';
+    document.getElementById('nsSubjectCode').value = '';
+    document.getElementById('nsSubjectName').value = '';
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+      document.getElementById('nsSubjectCode').focus();
+    }, 60);
+  };
+
+  function closeNewSubjectModal() {
+    const modal = document.getElementById('modalNewSubject');
+    modal.classList.add('hidden');
+    if (activeSubjectTargetId) {
+      const el = document.getElementById(activeSubjectTargetId);
+      if (el && el.value === '__NEW_SUBJECT__') {
+        el.value = prevSelectValues[activeSubjectTargetId] || '';
+      }
+    }
+  }
+
+  document.getElementById('btnCloseNewSubjectModal')?.addEventListener('click', closeNewSubjectModal);
+  document.getElementById('btnCancelNewSubject')?.addEventListener('click', closeNewSubjectModal);
+
+  // Auto-detect when user selects "+ Provide / Add New Subject..." in any dropdown
+  ['tplSubjectSelect', 'qbSubjectFilter', 'upSubjectId', 'nqSubject', 'edSubjectId'].forEach(selId => {
+    const sel = document.getElementById(selId);
+    if (!sel) return;
+    sel.dataset.prevVal = sel.value;
+    sel.addEventListener('change', () => {
+      if (sel.value === '__NEW_SUBJECT__') {
+        openNewSubjectModal(selId);
+      } else {
+        sel.dataset.prevVal = sel.value;
+      }
+    });
+  });
+
+  // Handle New Subject Form Submission
+  document.getElementById('formNewSubject')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const code = document.getElementById('nsSubjectCode').value.trim().toUpperCase();
+    const name = document.getElementById('nsSubjectName').value.trim();
+    const fb = document.getElementById('newSubjectFeedback');
+    const btn = document.getElementById('btnSubmitNewSubject');
+
+    if (!code || !name) {
+      fb.className = 'p-3 rounded-xl text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 block';
+      fb.textContent = 'Please enter both Subject Code and Subject Name.';
+      return;
+    }
+
+    btn.disabled = true;
+    fb.className = 'p-3 rounded-xl text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 block';
+    fb.textContent = 'Registering new subject in database...';
+
+    try {
+      const res = await fetch('/api/mq/subjects/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject_code: code, subject_name: name })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to register subject');
+      }
+
+      const s = data.subject;
+      const displayLabel = `${s.subject_code} - ${s.subject_name}`;
+
+      // Update all subject dropdowns on the page
+      const dropdownConfigs = [
+        { id: 'tplSubjectSelect', value: s.subject_code, useCode: true },
+        { id: 'qbSubjectFilter', value: s.id, useCode: false },
+        { id: 'upSubjectId', value: s.id, useCode: false },
+        { id: 'nqSubject', value: s.id, useCode: false },
+        { id: 'edSubjectId', value: s.id, useCode: false }
+      ];
+
+      dropdownConfigs.forEach(cfg => {
+        const sel = document.getElementById(cfg.id);
+        if (!sel) return;
+
+        let exists = false;
+        for (let i = 0; i < sel.options.length; i++) {
+          if (cfg.useCode) {
+            if (sel.options[i].value === s.subject_code) { exists = true; break; }
+          } else {
+            if (sel.options[i].value == s.id) { exists = true; break; }
+          }
+        }
+
+        if (!exists) {
+          const opt = document.createElement('option');
+          opt.value = cfg.useCode ? s.subject_code : s.id;
+          opt.textContent = displayLabel;
+          if (cfg.useCode) opt.dataset.id = s.id;
+
+          const newSubjectOpt = sel.querySelector('option[value="__NEW_SUBJECT__"]');
+          if (newSubjectOpt) {
+            sel.insertBefore(opt, newSubjectOpt);
+          } else {
+            sel.appendChild(opt);
+          }
+        }
+      });
+
+      // Select newly created subject on the active target selector
+      const targetId = activeSubjectTargetId || 'tplSubjectSelect';
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) {
+        if (targetId === 'tplSubjectSelect') {
+          targetEl.value = s.subject_code;
+        } else {
+          targetEl.value = s.id;
+        }
+        targetEl.dataset.prevVal = targetEl.value;
+        targetEl.dispatchEvent(new Event('change'));
+      }
+
+      // Also ensure Download Template Centre dropdown is updated if opened from there
+      const tplSel = document.getElementById('tplSubjectSelect');
+      if (tplSel && targetId === 'tplSubjectSelect') {
+        tplSel.value = s.subject_code;
+        tplSel.dispatchEvent(new Event('change'));
+      }
+
+      fb.className = 'p-3 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 block';
+      fb.textContent = `✓ Subject ${displayLabel} activated successfully!`;
+
+      setTimeout(() => {
+        closeNewSubjectModal();
+      }, 700);
+
+    } catch (err) {
+      fb.className = 'p-3 rounded-xl text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 block';
+      fb.textContent = 'Error: ' + err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // Download Template Centre: Dynamic Subject Parameter Binding
+  const tplSelect = document.getElementById('tplSubjectSelect');
+  const tplBadge = document.getElementById('tplSubjectBadge');
+  const tplBadgeText = document.getElementById('tplSubjectBadgeText');
+  const tplLinks = document.querySelectorAll('.tpl-download-link');
+
+  if (tplSelect) {
+    tplSelect.addEventListener('change', () => {
+      const code = tplSelect.value;
+      if (code === '__NEW_SUBJECT__') return;
+
+      const opt = tplSelect.options[tplSelect.selectedIndex];
+      const sId = opt?.dataset?.id || '';
+      const subName = opt?.text || '';
+
+      tplLinks.forEach(link => {
+        let baseHref = link.getAttribute('data-base-href');
+        if (!baseHref) {
+          baseHref = link.getAttribute('href').split('?')[0];
+          link.setAttribute('data-base-href', baseHref);
+        }
+        if (code) {
+          link.setAttribute('href', `${baseHref}?subject_code=${encodeURIComponent(code)}&subject_id=${sId}&subject_name=${encodeURIComponent(subName)}`);
+        } else {
+          link.setAttribute('href', baseHref);
+        }
+      });
+
+      if (code) {
+        tplBadge.classList.remove('hidden');
+        tplBadgeText.textContent = `All 15 templates pre-configured for ${subName}. Questions uploaded with these templates will automatically be saved under ${code} in the Question Bank.`;
+      } else {
+        tplBadge.classList.add('hidden');
+      }
+    });
+  }
+
   document.getElementById('formUploadQuestions').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fileInput = document.getElementById('upFile');
@@ -505,6 +1331,8 @@
     fd.append('file', fileInput.files[0]);
     const quizId = document.getElementById('upQuizId').value;
     if (quizId) fd.append('quiz_id', quizId);
+    const subjId = document.getElementById('upSubjectId').value;
+    if (subjId) fd.append('subject_id', subjId);
 
     const fb = document.getElementById('uploadFeedback');
     fb.className = 'p-3 rounded-xl text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 block';
@@ -518,7 +1346,12 @@
         method: 'POST',
         body: fd
       });
-      const json = await res.json();
+      let json = {};
+      try {
+        json = await res.json();
+      } catch (err) {
+        throw new Error('Server returned invalid response');
+      }
       if (!res.ok || !json.success) {
         fb.className = 'p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 block';
         fb.textContent = 'Import error: ' + (json.error || 'Failed to import file.');
@@ -530,7 +1363,7 @@
       }
     } catch (err) {
       fb.className = 'p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 block';
-      fb.textContent = 'Network error communicating with server.';
+      fb.textContent = 'Import error: ' + err.message;
     } finally {
       btn.disabled = false;
     }
@@ -550,10 +1383,11 @@
 
   document.getElementById('formNewQuiz').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const subjVal = document.getElementById('nqSubject').value;
     const payload = {
-      title: document.getElementById('nqTitle').value,
-      quiz_code: document.getElementById('nqCode').value,
-      subject_id: parseInt(document.getElementById('nqSubject').value),
+      title: document.getElementById('nqTitle').value.trim(),
+      quiz_code: document.getElementById('nqCode').value.trim(),
+      subject_id: subjVal ? parseInt(subjVal) : null,
       duration_minutes: parseInt(document.getElementById('nqDuration').value),
       total_questions: parseInt(document.getElementById('nqQuestions').value),
       total_marks: parseFloat(document.getElementById('nqTotalMarks').value),
@@ -576,7 +1410,12 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const json = await res.json();
+      let json = {};
+      try {
+        json = await res.json();
+      } catch (err) {
+        throw new Error('Server returned invalid response');
+      }
       if (!res.ok || !json.success) {
         fb.className = 'p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 block';
         fb.textContent = 'Creation error: ' + (json.error || 'Failed to create quiz.');
@@ -587,10 +1426,144 @@
       }
     } catch (err) {
       fb.className = 'p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 block';
-      fb.textContent = 'Network error communicating with server.';
+      fb.textContent = 'Error: ' + err.message;
     } finally {
       btn.disabled = false;
     }
   });
+
+  // Student Management & Registration Interactions (MQ-02)
+  const modalSingleStudent = document.getElementById('modalSingleStudent');
+  const btnOpenSingleStudentModal = document.getElementById('btnOpenSingleStudentModal');
+  const btnCloseSingleStudentModal = document.getElementById('btnCloseSingleStudentModal');
+  const btnCancelSingleStudent = document.getElementById('btnCancelSingleStudent');
+  const formSingleStudent = document.getElementById('formSingleStudent');
+
+  if (btnOpenSingleStudentModal) {
+    btnOpenSingleStudentModal.addEventListener('click', () => {
+      document.getElementById('singleStudentFeedback').classList.add('hidden');
+      modalSingleStudent.classList.remove('hidden');
+    });
+  }
+  const closeSingleStudent = () => modalSingleStudent.classList.add('hidden');
+  if (btnCloseSingleStudentModal) btnCloseSingleStudentModal.addEventListener('click', closeSingleStudent);
+  if (btnCancelSingleStudent) btnCancelSingleStudent.addEventListener('click', closeSingleStudent);
+
+  if (formSingleStudent) {
+    formSingleStudent.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const sap = document.getElementById('regSapId').value.trim();
+      const name = document.getElementById('regName').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const quiz_id = document.getElementById('regQuizId').value;
+
+      const fb = document.getElementById('singleStudentFeedback');
+      fb.className = 'p-3 rounded-xl text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 block';
+      fb.textContent = 'Registering student in institutional database...';
+
+      const btn = document.getElementById('btnSubmitSingleStudent');
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/mq/students/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sap_id: sap, student_name: name, email, quiz_id })
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          fb.className = 'p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 block';
+          fb.textContent = json.error || 'Failed to register student.';
+        } else {
+          fb.className = 'p-3 rounded-xl text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 block';
+          fb.textContent = `Student ${json.data.student_name} (${json.data.sap_id}) registered successfully! Reloading...`;
+          setTimeout(() => window.location.reload(), 1200);
+        }
+      } catch (err) {
+        fb.className = 'p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 block';
+        fb.textContent = 'Network communication error.';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+
+  // Bulk Import Student Roster
+  const modalImportStudent = document.getElementById('modalImportStudent');
+  const btnOpenImportStudentModal = document.getElementById('btnOpenImportStudentModal');
+  const btnCloseImportStudentModal = document.getElementById('btnCloseImportStudentModal');
+  const btnCancelImportStudent = document.getElementById('btnCancelImportStudent');
+  const formImportStudent = document.getElementById('formImportStudent');
+
+  if (btnOpenImportStudentModal) {
+    btnOpenImportStudentModal.addEventListener('click', () => {
+      document.getElementById('importStudentFeedback').classList.add('hidden');
+      modalImportStudent.classList.remove('hidden');
+    });
+  }
+  const closeImportStudent = () => modalImportStudent.classList.add('hidden');
+  if (btnCloseImportStudentModal) btnCloseImportStudentModal.addEventListener('click', closeImportStudent);
+  if (btnCancelImportStudent) btnCancelImportStudent.addEventListener('click', closeImportStudent);
+
+  if (formImportStudent) {
+    formImportStudent.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById('studentRosterFile');
+      if (!fileInput.files || fileInput.files.length === 0) {
+        alert('Please select an Excel or CSV file.');
+        return;
+      }
+      const quizId = document.getElementById('impQuizId').value;
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+      if (quizId) formData.append('quiz_id', quizId);
+
+      const fb = document.getElementById('importStudentFeedback');
+      fb.className = 'p-3 rounded-xl text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 block';
+      fb.textContent = 'Parsing and enrolling cohort roster...';
+
+      const btn = document.getElementById('btnSubmitImportStudent');
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/mq/students/import', {
+          method: 'POST',
+          body: formData
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          fb.className = 'p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 block';
+          fb.textContent = json.error || 'Import failed.';
+        } else {
+          fb.className = 'p-3 rounded-xl text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 block';
+          fb.textContent = `Roster Imported: ${json.data.added} added, ${json.data.updated} updated, ${json.data.enrolled} enrolled! Reloading...`;
+          setTimeout(() => window.location.reload(), 1500);
+        }
+      } catch (err) {
+        fb.className = 'p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 block';
+        fb.textContent = 'Network communication error.';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+
+  // Live filter student search
+  const studentSearchInput = document.getElementById('studentSearchInput');
+  if (studentSearchInput) {
+    studentSearchInput.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      document.querySelectorAll('#studentsTable .student-row').forEach(row => {
+        const sap = row.querySelector('.sap-cell')?.textContent.toLowerCase() || '';
+        const name = row.querySelector('.name-cell')?.textContent.toLowerCase() || '';
+        const email = row.querySelector('.email-cell')?.textContent.toLowerCase() || '';
+        if (sap.includes(q) || name.includes(q) || email.includes(q)) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    });
+  }
 </script>
 {% endblock %}

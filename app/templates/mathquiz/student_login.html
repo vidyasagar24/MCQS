@@ -55,33 +55,57 @@
           <span id="errorMessage" class="leading-snug"></span>
         </div>
 
+        <!-- 1. SAP ID / Roll Number (FIRST) -->
         <div>
-          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Registered Full Name <span class="text-rose-500">*</span></label>
-          <input type="text" id="studentName" required autocomplete="name"
-            placeholder="e.g. Aarav Sharma"
-            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition">
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">SAP ID / Roll No <span class="text-rose-500">*</span></label>
-            <input type="text" id="sapId" required autocomplete="off"
-              placeholder="e.g. 70572600101"
-              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm uppercase mono transition">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+              SAP ID / Roll No <span class="text-rose-500">*</span>
+            </label>
+            <span id="sapLookupStatus" class="text-xs text-slate-400">Enter SAP ID to auto-display student details</span>
           </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Quiz Code <span class="text-rose-500">*</span></label>
-            <input type="text" id="quizCode" required autocomplete="off"
-              placeholder="e.g. MATH2026"
-              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm uppercase mono font-semibold text-indigo-700 transition">
+          <div class="relative">
+            <input type="text" id="sapId" required autocomplete="off" autofocus
+              placeholder="e.g. 2026CE001 or 70572600101"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm uppercase mono font-bold text-slate-900 transition">
+            <div id="sapSpinner" class="hidden absolute right-3 top-3">
+              <svg class="animate-spin h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+            </div>
           </div>
         </div>
 
+        <!-- 2. Auto-Displayed Student Information Card -->
+        <div id="studentDetailsCard" class="bg-indigo-50/70 border border-indigo-200/80 rounded-xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+              Institutional Candidate Information
+            </span>
+            <span id="recordStatusBadge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-600">
+              Awaiting SAP ID
+            </span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Student Full Name</label>
+              <input type="text" id="studentName" required readonly
+                placeholder="Auto-displayed from SAP ID"
+                class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white/90 text-slate-900 font-semibold text-xs focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Registered Institutional Email</label>
+              <input type="email" id="email" required readonly
+                placeholder="Auto-displayed from SAP ID"
+                class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white/90 text-slate-900 font-semibold text-xs focus:outline-none">
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Examination Quiz Code -->
         <div>
-          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Registered Email ID <span class="text-rose-500">*</span></label>
-          <input type="email" id="email" required autocomplete="email"
-            placeholder="e.g. aarav.sharma@univ.edu"
-            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition">
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Examination Quiz Code <span class="text-rose-500">*</span></label>
+          <input type="text" id="quizCode" required autocomplete="off"
+            placeholder="e.g. MATH2026"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm uppercase mono font-bold text-indigo-700 tracking-wide transition">
         </div>
 
         <!-- Examination Protocol Notice -->
@@ -96,13 +120,13 @@
             <li>The examination operates strictly in <strong>fullscreen mode</strong>.</li>
             <li>Tab switches, exiting fullscreen, right-click, and copy/paste are logged as security strikes.</li>
             <li>Reaching the strike limit triggers <strong>automatic submission</strong>.</li>
-            <li>Personal candidate watermarks will remain visible across questions throughout the test.</li>
+            <li>Only <strong>one student</strong> is permitted to write the examination per system/device.</li>
           </ul>
         </div>
 
         <button type="submit" id="btnSubmit"
           class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-sm shadow-md shadow-indigo-100 transition flex items-center justify-center space-x-2">
-          <span>Verify &amp; Enter Examination</span>
+          <span>Verify &amp; Launch Fullscreen Examination</span>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
           </svg>
@@ -127,6 +151,76 @@
       errBox.classList.remove('hidden');
     }
 
+    function getSystemFingerprint() {
+      let sysId = localStorage.getItem('mq_system_id');
+      if (!sysId) {
+        sysId = 'SYS-' + (window.crypto && crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(36).substring(2, 10) + '-' + Date.now().toString(36)));
+        localStorage.setItem('mq_system_id', sysId);
+      }
+      return sysId;
+    }
+
+    // Real-Time SAP ID Auto-Lookup
+    let lookupDebounce = null;
+    const sapInput = document.getElementById('sapId');
+    const nameInput = document.getElementById('studentName');
+    const emailInput = document.getElementById('email');
+    const sapStatus = document.getElementById('sapLookupStatus');
+    const recordBadge = document.getElementById('recordStatusBadge');
+    const sapSpinner = document.getElementById('sapSpinner');
+
+    async function fetchStudentBySap(sapVal) {
+      const cleanSap = sapVal.trim();
+      if (!cleanSap || cleanSap.length < 2) {
+        nameInput.value = '';
+        emailInput.value = '';
+        recordBadge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-600';
+        recordBadge.textContent = 'Awaiting SAP ID';
+        sapStatus.className = 'text-xs text-slate-400';
+        sapStatus.textContent = 'Enter SAP ID to auto-display student details';
+        return;
+      }
+
+      sapSpinner.classList.remove('hidden');
+      sapStatus.className = 'text-xs text-indigo-600 font-medium';
+      sapStatus.textContent = 'Looking up institutional record...';
+
+      try {
+        const res = await fetch(`/api/mq/student-info/${encodeURIComponent(cleanSap)}`);
+        const json = await res.json();
+        if (res.ok && json.success) {
+          nameInput.value = json.data.student_name;
+          emailInput.value = json.data.email;
+          recordBadge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+          recordBadge.textContent = 'Verified Student ✓';
+          sapStatus.className = 'text-xs text-emerald-600 font-semibold';
+          sapStatus.textContent = `Identified: ${json.data.student_name}`;
+          errBox.classList.add('hidden');
+        } else {
+          nameInput.value = '';
+          emailInput.value = '';
+          recordBadge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700';
+          recordBadge.textContent = 'Record Not Found';
+          sapStatus.className = 'text-xs text-rose-600 font-medium';
+          sapStatus.textContent = json.error || 'No student found for this SAP ID.';
+        }
+      } catch (err) {
+        sapStatus.className = 'text-xs text-rose-500';
+        sapStatus.textContent = 'Error connecting to student registry.';
+      } finally {
+        sapSpinner.classList.add('hidden');
+      }
+    }
+
+    sapInput.addEventListener('input', (e) => {
+      clearTimeout(lookupDebounce);
+      lookupDebounce = setTimeout(() => fetchStudentBySap(e.target.value), 350);
+    });
+
+    sapInput.addEventListener('blur', (e) => {
+      fetchStudentBySap(e.target.value);
+    });
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       errBox.classList.add('hidden');
@@ -135,6 +229,7 @@
       const sap_id = document.getElementById('sapId').value.trim().toUpperCase();
       const quiz_code = document.getElementById('quizCode').value.trim().toUpperCase();
       const email = document.getElementById('email').value.trim().toLowerCase();
+      const system_fingerprint = getSystemFingerprint();
 
       if (!student_name || !sap_id || !quiz_code || !email) {
         return showError('Please fill in all required fields.');
@@ -147,7 +242,7 @@
         const res = await fetch('/api/mq/verify-student', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ student_name, sap_id, quiz_code, email })
+          body: JSON.stringify({ student_name, sap_id, quiz_code, email, system_fingerprint })
         });
         const json = await res.json();
 
@@ -174,7 +269,7 @@
         const startRes = await fetch('/api/mq/start-attempt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ quiz_id: info.quiz_id, student_id: info.student_id })
+          body: JSON.stringify({ quiz_id: info.quiz_id, student_id: info.student_id, system_fingerprint })
         });
         const startJson = await startRes.json();
 

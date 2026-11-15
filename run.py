@@ -1,3 +1,4 @@
+#   & "C:\Users\acer\anaconda3\python.exe" run.py
 import os
 from app import create_app
 

@@ -72,7 +72,13 @@ def _build_postgres_config(raw_url):
             filtered_query.append((k, v))
 
     clean_uri = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(filtered_query), parts.fragment))
-    connect_args = {'timeout': 30}
+
+    # Supabase pooler on port 6543 (transaction mode) can intermittently hang or time out.
+    # Port 5432 (session pooler mode) provides immediate, rock-solid connectivity.
+    if ':6543' in clean_uri and 'pooler.supabase.com' in clean_uri:
+        clean_uri = clean_uri.replace(':6543', ':5432')
+
+    connect_args = {'timeout': 60}
     if sslmode_val != 'disable' and ('supabase.' in clean_uri or sslmode_val is not None):
         ssl_ctx = ssl.create_default_context()
         ssl_ctx.check_hostname = False
