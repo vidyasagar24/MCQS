@@ -35,9 +35,6 @@ def create_app(config_class=Config):
 
     # Root route redirects to student examination login
     @app.route('/')
-    @app.route('/api/index')
-    @app.route('/api/index.py')
-    @app.route('/api')
     def root_index():
         return redirect(url_for('mathquiz.student_portal'))
 

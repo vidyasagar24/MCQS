@@ -1,5 +1,7 @@
 import os
 import sys
+from urllib.parse import parse_qs, urlencode
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Add project root directory to sys.path for serverless execution
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -15,34 +17,33 @@ class VercelPathFixer:
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
-        if 'debug=1' in environ.get('QUERY_STRING', ''):
-            status = '200 OK'
-            headers = [('Content-Type', 'application/json')]
-            import json
-            data = {
-                'PATH_INFO': environ.get('PATH_INFO'),
-                'SCRIPT_NAME': environ.get('SCRIPT_NAME'),
-                'RAW_URI': environ.get('RAW_URI'),
-                'REQUEST_URI': environ.get('REQUEST_URI'),
-                'QUERY_STRING': environ.get('QUERY_STRING'),
-                'HTTP_HEADERS': {k: v for k, v in environ.items() if k.startswith('HTTP_')}
-            }
-            start_response(status, headers)
-            return [json.dumps(data, indent=2).encode('utf-8')]
+        qs = environ.get('QUERY_STRING', '')
+        params = parse_qs(qs, keep_blank_values=True)
 
-        matched = environ.get('HTTP_X_MATCHED_PATH')
-        path_info = environ.get('PATH_INFO', '')
+        # Check for forwarded route param from Vercel rewrite
+        route_key = None
+        for key in ('__route', '__vercel_route', 'path'):
+            if key in params:
+                route_key = key
+                break
 
-        # If Vercel provided the original route in HTTP_X_MATCHED_PATH
-        if matched and matched not in ('/api/index', '/api/index.py', '/api'):
-            environ['PATH_INFO'] = matched
-        elif path_info.startswith('/api/index/'):
-            environ['PATH_INFO'] = path_info[len('/api/index'):]
-        elif path_info.startswith('/api/index.py/'):
-            environ['PATH_INFO'] = path_info[len('/api/index.py'):]
-        elif path_info in ('/api/index', '/api/index.py', '/api', ''):
+        if route_key:
+            raw_path = params.pop(route_key)[0]
+            if raw_path:
+                environ['PATH_INFO'] = '/' + raw_path.lstrip('/')
+            else:
+                environ['PATH_INFO'] = '/'
+            # Reconstruct clean QUERY_STRING without internal route param
+            clean_pairs = []
+            for k, vals in params.items():
+                for v in vals:
+                    clean_pairs.append((k, v))
+            environ['QUERY_STRING'] = urlencode(clean_pairs)
+        elif environ.get('PATH_INFO') in ('/api/index', '/api/index.py', '/api'):
             environ['PATH_INFO'] = '/'
 
         return self.wsgi_app(environ, start_response)
 
+# Trust reverse-proxy headers from Vercel (https, correct client host, etc.)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.wsgi_app = VercelPathFixer(app.wsgi_app)
