@@ -15,6 +15,21 @@ class VercelPathFixer:
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
+        if 'debug=1' in environ.get('QUERY_STRING', ''):
+            status = '200 OK'
+            headers = [('Content-Type', 'application/json')]
+            import json
+            data = {
+                'PATH_INFO': environ.get('PATH_INFO'),
+                'SCRIPT_NAME': environ.get('SCRIPT_NAME'),
+                'RAW_URI': environ.get('RAW_URI'),
+                'REQUEST_URI': environ.get('REQUEST_URI'),
+                'QUERY_STRING': environ.get('QUERY_STRING'),
+                'HTTP_HEADERS': {k: v for k, v in environ.items() if k.startswith('HTTP_')}
+            }
+            start_response(status, headers)
+            return [json.dumps(data, indent=2).encode('utf-8')]
+
         matched = environ.get('HTTP_X_MATCHED_PATH')
         path_info = environ.get('PATH_INFO', '')
 
